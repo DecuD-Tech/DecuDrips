@@ -1,106 +1,99 @@
-# DocuDrip (Continuous Docs Micro-Funding Protocol)
+# DocuDrip
 
-DocuDrip is a continuous, real-time documentation micro-funding dashboard designed for modern open-source ecosystems. It monitors documentation contributions, translates engagement/helpfulness metrics into algorithmic weights, and distributes continuous funding streams directly to contributors.
+**Continuous micro-funding for open-source documentation.**
 
-## Product Philosophy
-DocuDrip operates on the principle of **Continuous Value Realization**. Rather than locking developer incentives behind large, static, and delayed milestones, DocuDrip calculates small, automated, real-time payouts ("drips") that flow continuously into contributor accounts based on character counts, localization multipliers, and helpfulness metrics.
+DocuDrip is a decentralized protocol that rewards technical writers and documentation maintainers with real-time, continuous micro-payments. Instead of locking incentives behind large milestones or bounty completions, DocuDrip calculates small automated payouts — "drips" — that stream directly into contributor accounts based on contribution quality, community feedback, and localization reach.
 
-This UI has been fully redesigned under strict **Dark Tech / Industrial** aesthetics to serve developers, open-source maintainers, and sponsors. It prioritizes data density, high-utility layouts, and transparent metrics over visual fluff.
+## The Problem
 
----
+Open-source documentation is consistently underfunded. Writers contribute critical work — guides, API references, translations — but rarely see direct compensation. Existing bounty and grant models are slow, opaque, and favour one-off contributions over sustained maintenance. DocuDrip fixes this by making documentation funding continuous, transparent, and algorithmic.
 
-## 🎨 Visual System & Design Architecture
+## How It Works
 
-DocuDrip follows a unified Design System tailored for premium, high-density dashboard interfaces.
+1. **Maintainers** create funding pools tied to their repositories and set per-character rates, locale multipliers, and quality thresholds.
+2. **Contributors** claim documentation pages, submit improvements, and immediately begin receiving a live payment stream calculated from contribution size, translation locale, and community helpfulness ratings.
+3. **Community members** vote on documentation quality through an embeddable feedback widget. Votes directly adjust a contributor's payout multiplier in real time.
+4. **The protocol** handles stream calculation, rate adjustment, and payout distribution — simulating on-chain streaming mechanics (inspired by Superfluid) on the client side for V1, with real smart contract integration planned for V2.
 
-- **Primary Colors**: Sleek terminal black and dark-zinc foundations (`zinc-950` as background, `zinc-900`/`zinc-800` borders and panel backgrounds).
-- **Accent Color**: Electric Cyan (`#00f0ff` / `hsl(180, 100%, 50%)`) used sparingly for focused feedback, status indicators, and selected states.
-- **Typography**: Inter (sans-serif) for high legibility in labels and metrics; Space Grotesk (sans-serif) for high-impact structural headers.
-- **Border Radii**: Strict, uniform `8px` corner treatments for an industrial, precise grid feel.
-- **Elevations**: Flat, high-contrast borders (`1px solid var(--border-color)`) without soft drop shadows or noisy glassmorphism.
-- **Micro-Animations**: Purposeful, GPU-accelerated feedback states (e.g., scale adjustments on hover, clean progress bars, and high-performance ticker states).
+## Tech Stack
 
----
+| Layer | Technology |
+|-------|------------|
+| Backend | Rust (Axum, Tokio, SQLx) |
+| Database | PostgreSQL 16 |
+| Cache / PubSub | Redis 7 |
+| Frontend | React 19, Vite 8, Zustand, React Query |
+| Embeddable Widget | Vanilla JS, Shadow DOM (< 5 KB) |
+| Auth | GitHub OAuth 2.0 + JWT |
+| Styling | Vanilla CSS (no frameworks) |
 
-## ⚙️ Key Technical Features
+## Project Structure
 
-1. **Continuous Payout Simulation Engine**:
-   - Updates every 100 milliseconds using standard interval timers.
-   - Algorithmic micro-funding calculated based on:
-     $$\text{Drip Rate (USDC/sec)} = \frac{\text{File Character Count} \times \text{Base Pool Rate} \times \text{Locale Multiplier} \times \text{Feedback Multiplier} \times \text{Demo Boost}}{86,400}$$
+```
+docudrip/
+├── backend/          # Rust API server (Axum + SQLx)
+├── frontend/         # React dashboard client
+├── widget/           # Embeddable documentation feedback widget
+├── docker-compose.yml
+├── PRODUCT.md        # Brand and design guidelines
+└── README.md
+```
 
-2. **Multi-Locale Translation Boosts**:
-   - Encourages global translation streams by scaling reward rates dynamically for high-demand regions (e.g., Spanish, Chinese, and German localization multipliers).
+Each package is independently buildable and deployable.
 
-3. **Active Helpfulness / Peer-Voting Loop**:
-   - Real-time rating dynamics driven by Upvote / Downvote distributions.
-   - Payout multiplier adjustments calculated instantly on feedback fluctuations:
-     - $\ge 95\%$ Rating $\rightarrow 1.5\times$ Multiplier
-     - $\ge 90\%$ Rating $\rightarrow 1.2\times$ Multiplier
-     - $\ge 75\%$ Rating $\rightarrow 1.0\times$ Multiplier
-     - $\ge 60\%$ Rating $\rightarrow 0.8\times$ Multiplier
-     - $< 60\%$ Rating $\rightarrow 0.5\times$ Multiplier
-
-4. **Integration Sandbox**:
-   - Allows developers to dynamically spawn new micro-funding streams by specifying file parameters, locale settings, author details, and initial upvote scores.
-
----
-
-## 🛠️ Monorepo Structure & Local Development
-
-DocuDrip is structured as a monorepo containing three core packages:
-
-1. **`backend/`**: Rust Axum + SQLx + Postgres web server.
-2. **`frontend/`**: React 19 + Vite 8 client application.
-3. **`widget/`**: Lightweight vanilla JS embeddable widget.
+## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher recommended)
-- Rust and Cargo (latest stable)
-- Docker and Docker Compose (for PostgreSQL & Redis)
 
-### Step 1: Start Database and Cache
-Run the docker-compose environment from the root directory:
+- [Node.js](https://nodejs.org/) v18+
+- [Rust](https://www.rust-lang.org/tools/install) (latest stable)
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+
+### 1. Clone the repository
+
+```bash
+git clone git@github.com:XQurator-Tech/DecuDrips.git
+cd DecuDrips
+```
+
+### 2. Start infrastructure
+
 ```bash
 docker compose up -d
 ```
 
-### Step 2: Setup Backend (Rust)
-Navigate to the `backend/` directory:
+This spins up PostgreSQL 16 and Redis 7 locally.
+
+### 3. Run the backend
+
 ```bash
 cd backend
 cp .env.example .env
 cargo run
 ```
-The server will start on `http://localhost:8080/`.
 
-### Step 3: Setup Frontend (React)
-Navigate to the `frontend/` directory:
+Server starts at `http://localhost:8080`.
+
+### 4. Run the frontend
+
 ```bash
 cd frontend
 cp .env.example .env
 npm install
 npm run dev
 ```
-The client app will run at `http://localhost:5173/`.
 
-### Step 4: Setup Widget (Vanilla JS)
-Navigate to the `widget/` directory:
-```bash
-cd widget
-cp .env.example .env
-npm install
-```
+Client starts at `http://localhost:5173`.
 
----
+## V1 Scope
 
-## 💾 Roadmap & Local Storage (Drift)
+- GitHub OAuth login for maintainers and contributors
+- Funding pool creation and management dashboard
+- Real-time streaming payout engine with live-ticking counters
+- Embeddable helpfulness widget (👍 / 👎) that adjusts payout rates
+- Multi-locale translation multipliers
+- Simulated blockchain layer (real on-chain integration in V2)
 
-To evolve DocuDrip from a client-side simulation into a resilient, persistent protocol, the next architectural step is the integration of **Drift** for local data storage.
+## License
 
-We will leverage Drift (the reactive persistence library for Flutter and Dart, or corresponding local SQL storage layers) to:
-- Persist simulated funding pools and streams across browser sessions.
-- Queue offline micro-transactions securely until a connection is re-established.
-- Maintain persistent transaction logs and contributor identities locally on-device.
-
-*Refer to the [Drift Documentation](https://drift.simonbinder.eu/) for schema patterns, migration hooks, and reactive query setups.*
+This project is open source. License details will be added in a subsequent update.
