@@ -1,0 +1,62 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Frontend/Widget build outputs
+dist/
+dist-ssr/
+**/dist/
+**/dist-ssr/
+
+# Rust build outputs and dependencies
+target/
+**/target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# SQLite/Drift databases (if any local database is created during dev)
+*.db
+*.sqlite
+*.sqlite-journal
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.env
+**/.env
+**/.env.local
+**/.env.*.local
+
+# OS Metadata
+.DS_Store
+.DS_Store?
+**/._*
+**/.DS_Store
+
+# IDEs/Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.classpath
+.project
+.settings/
+.recommenders/
+
+# Temporary / Scratch files
+scratch/
+.gemini/
+.agents/
+
