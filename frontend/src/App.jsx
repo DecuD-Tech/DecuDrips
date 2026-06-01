@@ -1,90 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import { Droplets, LayoutDashboard, Activity, Terminal, Database, Zap, HeartHandshake, ThumbsUp } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { Droplets, LayoutDashboard, Activity, Terminal, Database, Zap, HeartHandshake, ThumbsUp, LogOut, User } from 'lucide-react';
+import { useAuthStore } from './stores/authStore';
+import { api } from './lib/api';
+
 import Dashboard from './components/Dashboard';
 import Streams from './components/Streams';
 import Sandbox from './components/Sandbox';
+import LoginPage from './pages/LoginPage';
+
 import './index.css';
 
-// Initial Mock State
-const initialPools = [
-  { id: 0, name: 'stellar/stellar-sdk-js', funding: 15000, rate: 0.02, dripped: 2450.12, mults: { es: 1.2, zh: 1.5, de: 1.1 } },
-  { id: 1, name: 'stellar/soroban-react', funding: 25000, rate: 0.03, dripped: 4890.30, mults: { es: 1.2, zh: 1.6, de: 1.1 } },
-  { id: 2, name: 'radicle/drips-sdk', funding: 10000, rate: 0.015, dripped: 820.40, mults: { es: 1.2, zh: 1.4, de: 1.1 } }
-];
+// Initialize the React Query Client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
-const initialStreams = [
-  { id: 'stream-1', author: 'marissa_dev', poolId: 0, file: 'README.md', characters: 850, locale: 'en', accumulated: 18.42901, upvotes: 18, totalVotes: 19 },
-  { id: 'stream-2', author: 'alejandro_tech', poolId: 0, file: 'getting_started.es.md', characters: 1540, locale: 'es', accumulated: 42.15830, upvotes: 24, totalVotes: 24 },
-  { id: 'stream-3', author: 'li_wei', poolId: 1, file: 'smart_contracts.zh.md', characters: 2100, locale: 'zh', accumulated: 95.84920, upvotes: 31, totalVotes: 33 }
-];
-
-// Helper functions
-export const calculateRating = (stream) => {
-  if (stream.totalVotes === 0) return 100;
-  return Math.round((stream.upvotes / stream.totalVotes) * 100);
-};
-
-export const calculateFeedbackMultiplier = (stream) => {
-  const rating = calculateRating(stream);
-  if (rating >= 95) return 1.5;
-  if (rating >= 90) return 1.2;
-  if (rating >= 75) return 1.0;
-  if (rating >= 60) return 0.8;
-  return 0.5;
-};
-
-export const getStreamRatePerSecond = (stream, pools) => {
-  const pool = pools.find(p => p.id === parseInt(stream.poolId));
-  if (!pool) return 0;
-  
-  const baseRate = stream.characters * pool.rate;
-  const localeMult = (stream.locale !== 'en' && pool.mults[stream.locale]) ? pool.mults[stream.locale] : 1.0;
-  const feedbackMult = calculateFeedbackMultiplier(stream);
-  const demoBoost = 50; 
-  return (baseRate * localeMult * feedbackMult * demoBoost) / 86400;
-};
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [pools, setPools] = useState(initialPools);
-  const [streams, setStreams] = useState(initialStreams);
-  const [totalDrippedGlobal, setTotalDrippedGlobal] = useState(8160.82);
+// Authentication Guard Component
+function RequireAuth({ children }) {
+  const { isAuthenticated, isLoading, loadUser } = useAuthStore();
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setStreams(currentStreams => {
-        let totalDrippedThisTick = 0;
-        const newStreams = currentStreams.map(stream => {
-          const rate = getStreamRatePerSecond(stream, pools);
-          const increment = rate * 0.1;
-          totalDrippedThisTick += increment;
-          return { ...stream, accumulated: stream.accumulated + increment };
-        });
+    loadUser();
+  }, [loadUser]);
 
-        if (totalDrippedThisTick > 0) {
-          setTotalDrippedGlobal(prev => prev + totalDrippedThisTick);
-          setPools(currentPools => {
-            const poolsCopy = [...currentPools];
-            currentStreams.forEach(stream => {
-              const poolIndex = poolsCopy.findIndex(p => p.id === parseInt(stream.poolId));
-              if (poolIndex !== -1) {
-                const rate = getStreamRatePerSecond(stream, poolsCopy);
-                poolsCopy[poolIndex] = {
-                  ...poolsCopy[poolIndex],
-                  dripped: poolsCopy[poolIndex].dripped + (rate * 0.1)
-                };
-              }
-            });
-            return poolsCopy;
-          });
-        }
-        return newStreams;
-      });
-    }, 100);
-    return () => clearInterval(timer);
-  }, [pools]);
+  if (isLoading) {
+    return (
+      <div className="login-page-container">
+        <div className="login-glow-bg"></div>
+        <div className="glass-card login-card" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h2 className="logo-text">Booting Session...</h2>
+          <div className="pulse-dot" style={{ margin: '2rem auto' }}></div>
+          <p className="logo-tagline">Validating credentials & state ledger</p>
+        </div>
+      </div>
+    );
+  }
 
-  const totalPoolsFund = pools.reduce((acc, p) => acc + p.funding, 0);
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+// GitHub OAuth Callback Route Handler
+function AuthCallback() {
+  const setToken = useAuthStore((state) => state.setToken);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      setToken(token);
+      navigate('/');
+    } else {
+      navigate('/login');
+    }
+  }, [searchParams, setToken, navigate]);
+
+  return (
+    <div className="login-page-container">
+      <div className="login-glow-bg"></div>
+      <div className="glass-card login-card" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <h2 className="logo-text">Authenticating...</h2>
+        <div className="pulse-dot" style={{ margin: '2rem auto' }}></div>
+        <p className="logo-tagline">Establishing secure cryptographic session</p>
+      </div>
+    </div>
+  );
+}
+
+// Main Authenticated Dashboard Shell Component
+function DashboardShell() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const { user, logout } = useAuthStore();
+
+  // Query global system stats
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['globalStats'],
+    queryFn: () => api.get('/stats'),
+    refetchInterval: 5000, // Poll every 5 seconds for a dynamic feel
+  });
 
   return (
     <>
@@ -101,20 +105,26 @@ export default function App() {
 
         <nav className="app-nav">
           <button className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
-            <LayoutDashboard size={18} strokeWidth={1.5} style={{marginRight: '8px'}} /> Dashboard
+            <LayoutDashboard size={18} strokeWidth={1.5} style={{ marginRight: '8px' }} /> Dashboard
           </button>
           <button className={`nav-btn ${activeTab === 'streams' ? 'active' : ''}`} onClick={() => setActiveTab('streams')}>
-            <Activity size={18} strokeWidth={1.5} style={{marginRight: '8px'}} /> Active Streams
+            <Activity size={18} strokeWidth={1.5} style={{ marginRight: '8px' }} /> Active Streams
           </button>
           <button className={`nav-btn ${activeTab === 'sandbox' ? 'active' : ''}`} onClick={() => setActiveTab('sandbox')}>
-            <Terminal size={18} strokeWidth={1.5} style={{marginRight: '8px'}} /> Integration Sandbox
+            <Terminal size={18} strokeWidth={1.5} style={{ marginRight: '8px' }} /> Integration Sandbox
           </button>
         </nav>
 
         <div className="header-wallet">
           <div className="wallet-badge">
             <span className="wallet-status"></span>
-            <span className="wallet-address">Simulated Wallet (0xDRIP...77c)</span>
+            <span className="wallet-address" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <User size={14} style={{ color: 'var(--clr-primary)' }} />
+              @{user?.username || 'user'} ({user?.role || 'contributor'})
+            </span>
+            <button onClick={logout} className="logout-inline-btn" title="Sign Out">
+              <LogOut size={14} />
+            </button>
           </div>
         </div>
       </header>
@@ -125,40 +135,65 @@ export default function App() {
             <div className="stat-icon pink"><Database size={20} strokeWidth={1.5} /></div>
             <div className="stat-info">
               <span className="stat-label">Total Reward Pools</span>
-              <span className="stat-value">${totalPoolsFund.toLocaleString()} <span className="currency">USDC</span></span>
+              <span className="stat-value">
+                ${statsLoading ? '...' : (stats?.total_pools_funding || 0).toLocaleString()} <span className="currency">USDC</span>
+              </span>
             </div>
           </div>
           <div className="stat-card">
             <div className="stat-icon cyan"><Zap size={20} strokeWidth={1.5} /></div>
             <div className="stat-info">
               <span className="stat-label">Total Dripped</span>
-              <span className="stat-value">{totalDrippedGlobal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span className="currency">USDC</span></span>
+              <span className="stat-value">
+                ${statsLoading ? '...' : (parseFloat(stats?.total_dripped || '0')).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="currency">USDC</span>
+              </span>
             </div>
           </div>
           <div className="stat-card">
             <div className="stat-info">
               <span className="stat-label">Active Drip Streams</span>
-              <span className="stat-value">{streams.length} Streams</span>
+              <span className="stat-value">{statsLoading ? '...' : stats?.active_streams_count || 0} Streams</span>
             </div>
             <div className="stat-icon green"><HeartHandshake size={20} strokeWidth={1.5} /></div>
           </div>
           <div className="stat-card">
             <div className="stat-info">
               <span className="stat-label">Avg Helpfulness</span>
-              <span className="stat-value">94.8%</span>
+              <span className="stat-value">{statsLoading ? '...' : `${(stats?.average_helpfulness_rating || 0).toFixed(1)}%`}</span>
             </div>
             <div className="stat-icon purple"><ThumbsUp size={20} strokeWidth={1.5} /></div>
           </div>
         </section>
 
-        {activeTab === 'dashboard' && <Dashboard pools={pools} setPools={setPools} />}
-        {activeTab === 'streams' && <Streams streams={streams} pools={pools} />}
-        {activeTab === 'sandbox' && <Sandbox streams={streams} setStreams={setStreams} pools={pools} />}
+        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'streams' && <Streams />}
+        {activeTab === 'sandbox' && <Sandbox />}
       </main>
 
       <footer className="app-footer">
-        <p>&copy; 2026 DocuDrip Protocol. Designed for highly resilient open-source ecosystems. All smart contracts are simulated on-client.</p>
+        <p>&copy; 2026 DocuDrip Protocol. Designed for highly resilient open-source documentation ecosystems. Running on Rust Axum and PostgreSQL.</p>
       </footer>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route 
+            path="/*" 
+            element={
+              <RequireAuth>
+                <DashboardShell />
+              </RequireAuth>
+            } 
+          />
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }

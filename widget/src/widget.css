@@ -1,0 +1,121 @@
+/* Minimalist Dark Tech Widget CSS for DocuDrip */
+:host {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin: 1.5rem auto;
+}
+
+.docudrip-widget-card {
+  background: rgba(15, 15, 18, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 1.25rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #f4f4f5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  transition: border-color 0.2s ease;
+}
+
+.docudrip-widget-card:hover {
+  border-color: rgba(0, 240, 255, 0.3);
+}
+
+.widget-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.brand-drip {
+  color: #00f0ff;
+  fill: #00f0ff;
+  animation: widget-drip-pulse 2s infinite ease-in-out;
+}
+
+@keyframes widget-drip-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px #00f0ff); }
+  50% { transform: scale(1.15) translateY(1px); filter: drop-shadow(0 0 4px rgba(0, 240, 255, 0.6)); }
+}
+
+.widget-question {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.widget-actions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.widget-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 110px;
+}
+
+.widget-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.widget-btn:hover svg {
+  transform: scale(1.1);
+}
+
+.widget-btn.upvote-btn:hover {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: #10b981;
+  color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.widget-btn.downvote-btn:hover {
+  background: rgba(255, 0, 127, 0.12);
+  border-color: #ff007f;
+  color: #ff007f;
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
+}
+
+.widget-success-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #10b981;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 6px;
+  width: 100%;
+}
+
+.widget-meta {
+  font-size: 0.7rem;
+  color: #a1a1aa;
+}

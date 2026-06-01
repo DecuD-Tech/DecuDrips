@@ -19,8 +19,86 @@ use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/", get(list_streams))
         .route("/:id", get(get_stream))
         .route("/:id/vote", post(vote))
+}
+
+/// List all active streams with pre-calculated, on-read accumulated balances & meta
+async fn list_streams(
+    State(state): State<AppState>,
+    _auth: OptionalAuth,
+) -> Result<impl IntoResponse, AppError> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT 
+            s.id, s.pool_id, s.author_id, s.pr_number, s.file_path, s.character_count, s.locale, s.accumulated, s.status, s.created_at,
+            u.username as author_username,
+            p.repo_full_name as pool_repo_name,
+            p.base_rate
+        FROM streams s
+        JOIN users u ON s.author_id = u.id
+        JOIN pools p ON s.pool_id = p.id
+        ORDER BY s.created_at DESC
+        "#
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    let mut response = Vec::new();
+
+    for row in rows {
+        // Fetch multipliers
+        let multipliers = locale::get_locale_multipliers(&state.db, row.pool_id).await?;
+        let locale_multiplier = multipliers
+            .into_iter()
+            .find(|m| m.locale == row.locale)
+            .map(|m| m.multiplier.to_string().parse::<f64>().unwrap_or(1.0))
+            .unwrap_or(1.0);
+
+        // Fetch approval ratio
+        let approval_ratio = votes::get_approval_ratio(&state.db, row.id).await?;
+
+        // Compute dynamic accumulated rewards
+        let base_rate_f64 = row.base_rate.to_string().parse::<f64>().unwrap_or(0.0);
+        let computed_f64 = calculator::calculate_accumulated(
+            row.character_count,
+            base_rate_f64,
+            locale_multiplier,
+            approval_ratio,
+            row.created_at,
+            Utc::now(),
+        );
+
+        let computed_decimal = Decimal::from_f64(computed_f64).unwrap_or(Decimal::ZERO);
+        let total_accumulated = row.accumulated + computed_decimal;
+
+        // Flow rate: base_rate * characters * locale * approval_multiplier / 86400
+        let feedback_mult = calculator::feedback_multiplier(approval_ratio);
+        let flow_rate_per_second = (row.character_count as f64)
+            * base_rate_f64
+            * locale_multiplier
+            * feedback_mult
+            / 86_400.0;
+
+        response.push(serde_json::json!({
+            "id": row.id,
+            "pool_id": row.pool_id,
+            "author_id": row.author_id,
+            "author_username": row.author_username,
+            "pool_repo_name": row.pool_repo_name,
+            "pr_number": row.pr_number,
+            "file_path": row.file_path,
+            "character_count": row.character_count,
+            "locale": row.locale,
+            "accumulated": total_accumulated,
+            "flow_rate_per_second": flow_rate_per_second,
+            "approval_ratio": approval_ratio,
+            "status": row.status,
+        }));
+    }
+
+    Ok(Json(response))
 }
 
 #[derive(Serialize)]

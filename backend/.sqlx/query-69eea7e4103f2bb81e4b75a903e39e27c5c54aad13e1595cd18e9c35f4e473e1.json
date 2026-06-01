@@ -1,0 +1,92 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            s.id, s.pool_id, s.author_id, s.pr_number, s.file_path, s.character_count, s.locale, s.accumulated, s.status, s.created_at,\n            u.username as author_username,\n            p.repo_full_name as pool_repo_name,\n            p.base_rate\n        FROM streams s\n        JOIN users u ON s.author_id = u.id\n        JOIN pools p ON s.pool_id = p.id\n        ORDER BY s.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "pool_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "author_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "pr_number",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "file_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "character_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "locale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "accumulated",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "author_username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "pool_repo_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "base_rate",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "69eea7e4103f2bb81e4b75a903e39e27c5c54aad13e1595cd18e9c35f4e473e1"
+}

@@ -1,99 +1,118 @@
 import React, { useState } from 'react';
-import { GitPullRequest, Merge, Smile, Droplet, ThumbsUp, ThumbsDown, Info } from 'lucide-react';
-import { getStreamRatePerSecond, calculateRating, calculateFeedbackMultiplier } from '../App';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { GitPullRequest, Merge, Smile, Droplet, ThumbsUp, ThumbsDown, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { api } from '../lib/api';
+import { calculateFeedbackMultiplier } from './Streams';
 
-export default function Sandbox({ streams, setStreams, pools }) {
-  const [author, setAuthor] = useState('alphaCoder');
-  const [file, setFile] = useState('README.md');
-  const [diff, setDiff] = useState(450);
-  const [poolId, setPoolId] = useState(pools[0]?.id || 0);
+export default function Sandbox() {
+  const queryClient = useQueryClient();
+  const [author, setAuthor] = useState('techWriter99');
+  const [filePath, setFilePath] = useState('docs/guide.md');
+  const [additions, setAdditions] = useState(650);
   const [logs, setLogs] = useState([
-    { id: 0, text: 'System: Terminal ready. Select parameters above and merge to see the automated CI pipeline checks.', type: 't-system' }
+    { id: 0, text: 'System: Bot terminal ready. Configure the pull request params above and click Merge to trigger validation.', type: 't-system' }
   ]);
-  const [currentWidgetStreamId, setCurrentWidgetStreamId] = useState(streams[0]?.id || null);
+  const [selectedStreamId, setSelectedStreamId] = useState('');
+  const [simError, setSimError] = useState('');
+  const [simSuccess, setSimSuccess] = useState('');
+
+  // Fetch active streams and pools to drive the sandbox dropdowns
+  const { data: streams = [], isLoading: streamsLoading } = useQuery({
+    queryKey: ['streams'],
+    queryFn: () => api.get('/streams'),
+  });
+
+  const { data: pools = [], isLoading: poolsLoading } = useQuery({
+    queryKey: ['pools'],
+    queryFn: () => api.get('/pools'),
+  });
+
+  const [selectedPoolId, setSelectedPoolId] = useState('');
+
+  // Set default selection values once queries load
+  React.useEffect(() => {
+    if (streams.length > 0 && !selectedStreamId) {
+      setSelectedStreamId(streams[0].id);
+    }
+  }, [streams, selectedStreamId]);
+
+  React.useEffect(() => {
+    if (pools.length > 0 && !selectedPoolId) {
+      setSelectedPoolId(pools[0].id);
+    }
+  }, [pools, selectedPoolId]);
+
+  // Mutation to record reader votes end-to-end
+  const voteMutation = useMutation({
+    mutationFn: ({ streamId, isUpvote }) => 
+      api.post(`/streams/${streamId}/vote`, {
+        is_upvote: isUpvote,
+        voter_ip: `mock-ip-${Math.random().toString(36).substring(2, 6)}`, // Ensure unique mock IP
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['streams'] });
+      queryClient.invalidateQueries({ queryKey: ['globalStats'] });
+    },
+    onError: (err) => {
+      alert(err.message || 'Already voted or failed to record vote.');
+    },
+  });
+
+  const handleVote = (isUpvote) => {
+    if (!selectedStreamId) return;
+    voteMutation.mutate({ streamId: selectedStreamId, isUpvote });
+  };
 
   const simulatePRMerge = () => {
     if (!author.trim()) {
       alert('Please enter a contributor username!');
       return;
     }
+    if (!selectedPoolId) {
+      alert('Please deploy at least one reward pool first!');
+      return;
+    }
 
-    const pool = pools.find(p => p.id === parseInt(poolId));
-    const locale = file.includes('.') ? file.split('.')[file.split('.').length - 2] : 'en';
+    const pool = pools.find(p => p.id === selectedPoolId);
+    const locale = filePath.includes('/es/') ? 'es' : filePath.includes('/zh/') ? 'zh' : filePath.includes('/de/') ? 'de' : 'en';
 
-    setLogs([{ id: Date.now() + 1, text: `Fetching metadata for PR from @${author}...`, type: 't-system' }]);
+    setLogs([{ id: Date.now() + 1, text: `Triggering local GitHub merge simulation for @${author}...`, type: 't-system' }]);
 
     setTimeout(() => {
-      setLogs(prev => [...prev, { id: Date.now() + 2, text: `Checking modified files: found ${file} (+${diff} characters)`, type: 't-cmd' }]);
-    }, 600);
+      setLogs(prev => [...prev, { id: Date.now() + 2, text: `Analyzing commits in repository ${pool.repo_full_name}...`, type: 't-cmd' }]);
+    }, 500);
+
+    setTimeout(() => {
+      setLogs(prev => [...prev, { id: Date.now() + 3, text: `Found doc modification: ${filePath} (+${additions} additions)`, type: 't-cmd' }]);
+    }, 1000);
 
     setTimeout(() => {
       setLogs(prev => [
         ...prev,
-        { id: Date.now() + 3, text: `Lint check: SUCCESS ✅`, type: 't-success' },
-        { id: Date.now() + 4, text: `Localization Check: Locale identified as [${locale.toUpperCase()}]`, type: 't-system' },
-        ...(locale !== 'en' ? [{ id: Date.now() + 5, text: `Locale multiplier matched: ${pool.mults[locale]}x base rate`, type: 't-pink' }] : [])
+        { id: Date.now() + 4, text: `Signature Bypass mode active for dev sandbox environment.`, type: 't-warning' },
+        { id: Date.now() + 5, text: `CI build: PASSED ✅`, type: 't-success' },
+        { id: Date.now() + 6, text: `Identified locale: [${locale.toUpperCase()}]`, type: 't-system' }
       ]);
-    }, 1200);
+    }, 1500);
 
     setTimeout(() => {
       setLogs(prev => [
         ...prev,
-        { id: Date.now() + 6, text: `Deploying stream contract on-chain...`, type: 't-cmd' },
-        { id: Date.now() + 7, text: `Init params: base_rate=${pool.rate} USDC/char, stream_period=30d`, type: 't-system' }
+        { id: Date.now() + 7, text: `Continuous reward stream initialized successfully!`, type: 't-success' },
+        { id: Date.now() + 8, text: `Please merge a real GitHub PR using webhooks to trigger the server-level HMAC verifier.`, type: 't-pink' }
       ]);
-    }, 1800);
-
-    setTimeout(() => {
-      const newId = `stream-${streams.length + 1}`;
-      setStreams(prev => [
-        ...prev,
-        {
-          id: newId,
-          author,
-          poolId: parseInt(poolId),
-          file,
-          characters: diff,
-          locale,
-          accumulated: 0,
-          upvotes: 1,
-          totalVotes: 1
-        }
-      ]);
-      setLogs(prev => [
-        ...prev,
-        { id: Date.now() + 8, text: `Smart contract successfully linked! Sparking real-time stream.`, type: 't-success' },
-        { id: Date.now() + 9, text: `New stream ID: ${newId} initialized. Rewards flowing!`, type: 't-pink' }
-      ]);
-    }, 2400);
+      queryClient.invalidateQueries({ queryKey: ['streams'] });
+      queryClient.invalidateQueries({ queryKey: ['globalStats'] });
+      setSimSuccess('Simulation executed! If you set up a mock client stream in your test database, query lists are refreshed.');
+      setTimeout(() => setSimSuccess(''), 6000);
+    }, 2200);
   };
 
-  const voteWidget = (type) => {
-    setStreams(prevStreams => {
-      return prevStreams.map(stream => {
-        if (stream.id === currentWidgetStreamId) {
-          return {
-            ...stream,
-            totalVotes: stream.totalVotes + 1,
-            upvotes: stream.upvotes + (type === 'up' ? 1 : 0)
-          };
-        }
-        return stream;
-      });
-    });
-  };
-
-  const selectedStream = streams.find(s => s.id === currentWidgetStreamId);
-  const selectedPool = selectedStream ? pools.find(p => p.id === parseInt(selectedStream.poolId)) : null;
-
-  let rating = 100;
-  let ratePerSec = 0;
-  let feedbackMult = 1;
-  if (selectedStream) {
-    rating = calculateRating(selectedStream);
-    ratePerSec = getStreamRatePerSecond(selectedStream, pools);
-    feedbackMult = calculateFeedbackMultiplier(selectedStream);
-  }
+  // Find active data details
+  const selectedStream = streams.find(s => s.id === selectedStreamId);
+  const rating = selectedStream ? Math.round(selectedStream.approval_ratio * 100) : 100;
+  const multiplier = selectedStream ? calculateFeedbackMultiplier(selectedStream.approval_ratio) : 1.0;
+  const flowRateMin = selectedStream ? (parseFloat(selectedStream.flow_rate_per_second) * 60).toFixed(4) : '0.0000';
 
   let ratingColor = 'var(--clr-secondary)';
   if (rating >= 90) ratingColor = 'var(--clr-success)';
@@ -102,41 +121,72 @@ export default function Sandbox({ streams, setStreams, pools }) {
   return (
     <div id="view-sandbox" className="tab-view active">
       <div className="sandbox-grid">
+        
+        {/* GitHub Bot Simulator Card */}
         <div className="glass-card sandbox-column">
           <div className="card-header">
-            <h2 className="card-title"><GitPullRequest className="title-icon" size={24} /> GitHub Bot Simulator</h2>
-            <p className="card-subtitle">Simulate merging a doc or localization pull request to trigger a real-time smart stream.</p>
+            <h2 className="card-title"><GitPullRequest className="title-icon" size={24} /> GitHub Webhook Simulator</h2>
+            <p className="card-subtitle">Simulate merging a documentation pull request to trigger the DocuDrip reward calculator.</p>
           </div>
+          
           <div className="simulator-panel">
+            {simSuccess && (
+              <div style={{ padding: '0.75rem 1rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981', borderRadius: '8px', fontSize: '0.8rem' }}>
+                {simSuccess}
+              </div>
+            )}
+            
             <div className="form-group">
               <label htmlFor="sim-author">Contributor Username</label>
-              <input type="text" id="sim-author" value={author} onChange={e => setAuthor(e.target.value)} placeholder="e.g. techWriter99" required />
+              <input 
+                type="text" 
+                id="sim-author" 
+                value={author} 
+                onChange={e => setAuthor(e.target.value)} 
+                placeholder="e.g. techWriter99" 
+              />
             </div>
+            
             <div className="form-group">
-              <label htmlFor="sim-file">Documentation File / Path</label>
-              <select id="sim-file" value={file} onChange={e => setFile(e.target.value)}>
-                <option value="README.md">README.md (Core Guide)</option>
-                <option value="getting_started.es.md">getting_started.es.md (Spanish Guide)</option>
-                <option value="smart_contracts.zh.md">smart_contracts.zh.md (Chinese Setup)</option>
-                <option value="advanced_api_reference.md">advanced_api_reference.md (API docs)</option>
+              <label htmlFor="sim-file">Documentation File Path</label>
+              <select id="sim-file" value={filePath} onChange={e => setFilePath(e.target.value)}>
+                <option value="docs/guide.md">docs/guide.md (English)</option>
+                <option value="docs/es/getting_started.md">docs/es/getting_started.md (Spanish)</option>
+                <option value="docs/zh/smart_contracts.md">docs/zh/smart_contracts.md (Chinese)</option>
+                <option value="README.md">README.md (Core Overview)</option>
               </select>
             </div>
+            
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="sim-diff">Character Count Added</label>
-                <input type="number" id="sim-diff" value={diff} onChange={e => setDiff(parseInt(e.target.value))} min="50" max="5000" />
+                <label htmlFor="sim-diff">Character Additions</label>
+                <input 
+                  type="number" 
+                  id="sim-diff" 
+                  value={additions} 
+                  onChange={e => setAdditions(parseInt(e.target.value))} 
+                  min="50" 
+                  max="10000" 
+                />
               </div>
               <div className="form-group">
-                <label htmlFor="sim-pool">Select Project Pool</label>
-                <select id="sim-pool" value={poolId} onChange={e => setPoolId(parseInt(e.target.value))}>
-                  {pools.map(pool => (
-                    <option key={pool.id} value={pool.id}>{pool.name}</option>
-                  ))}
+                <label htmlFor="sim-pool">Target Deployed Pool</label>
+                <select id="sim-pool" value={selectedPoolId} onChange={e => setSelectedPoolId(e.target.value)}>
+                  {poolsLoading ? (
+                    <option>Loading pools...</option>
+                  ) : pools.length === 0 ? (
+                    <option value="">No pools deployed yet</option>
+                  ) : (
+                    pools.map(pool => (
+                      <option key={pool.id} value={pool.id}>{pool.repo_full_name}</option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
+            
             <button onClick={simulatePRMerge} className="action-btn-secondary">
-              <Merge size={18} /> Merge PR & Spark Stream
+              <Merge size={18} /> Merge PR & Simulate Hook
             </button>
 
             <div className="terminal-box">
@@ -153,32 +203,52 @@ export default function Sandbox({ streams, setStreams, pools }) {
           </div>
         </div>
 
+        {/* Embedded Helpful Widget Preview */}
         <div className="glass-card sandbox-column">
           <div className="card-header">
-            <h2 className="card-title"><Smile className="title-icon" size={24} /> Docs Helpful Widget (Live Preview)</h2>
-            <p className="card-subtitle">See how reader feedback dynamically scales a contributor's stream multiplier in real time.</p>
+            <h2 className="card-title"><Smile className="title-icon" size={24} /> Docs Feedback Widget (Sandbox Preview)</h2>
+            <p className="card-subtitle">Submit real reader votes to `/vote` and watch the contributor's flow multiplier change immediately.</p>
           </div>
+          
           <div className="widget-sandbox-wrapper">
             <div className="form-group">
               <label htmlFor="widget-stream-selector">Select Active Stream to Rate</label>
-              <select id="widget-stream-selector" value={currentWidgetStreamId} onChange={e => setCurrentWidgetStreamId(e.target.value)}>
-                {streams.map(stream => (
-                  <option key={stream.id} value={stream.id}>{stream.author} ({stream.file})</option>
-                ))}
+              <select 
+                id="widget-stream-selector" 
+                value={selectedStreamId} 
+                onChange={e => setSelectedStreamId(e.target.value)}
+                disabled={streamsLoading || streams.length === 0}
+              >
+                {streamsLoading ? (
+                  <option>Loading streams...</option>
+                ) : streams.length === 0 ? (
+                  <option value="">No active streams found</option>
+                ) : (
+                  streams.map(stream => (
+                    <option key={stream.id} value={stream.id}>
+                      @{stream.author_username} ({stream.file_path.split('/').pop()})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
-            {selectedStream && selectedPool && (
+            {streams.length === 0 ? (
+              <div className="mock-doc-container" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <AlertCircle size={24} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                <p>Deploy a reward pool and merge a PR to generate a stream contract for ratings.</p>
+              </div>
+            ) : selectedStream ? (
               <div className="mock-doc-container">
                 <div className="mock-doc-header">
-                  <span className="mock-doc-title" id="mock-doc-title">{selectedPool.name.split('/')[1] || selectedPool.name} / {selectedStream.file}</span>
-                  <span className="mock-doc-lang" id="mock-doc-lang">{selectedStream.locale}</span>
+                  <span className="mock-doc-title">{selectedStream.pool_repo_name} / {selectedStream.file_path}</span>
+                  <span className="mock-doc-lang">{selectedStream.locale}</span>
                 </div>
                 <div className="mock-doc-body">
-                  <p><strong>Quick Start Guide:</strong></p>
-                  <p>To initialize the client, construct an instance pointing to the public horizon endpoint:</p>
-                  <pre><code>{`const server = new Horizon.Server("https://horizon.stellar.org");\nconst client = await server.accounts().accountId(PUB_KEY).call();`}</code></pre>
-                  <p className="mock-placeholder-text">This SDK allows developers to easily query accounts, build transactions, and submit them securely on-chain. Follow the remaining sections below to set up a listener for real-time transaction updates.</p>
+                  <p><strong>Integration Guide:</strong></p>
+                  <p>To initialize the micro-funding script on your site, add the following script tag containing your target stream identifier:</p>
+                  <pre><code>{`<script src="http://localhost:8080/widget.js"\n        data-stream="${selectedStream.id}"></script>`}</code></pre>
+                  <p className="mock-placeholder-text">This will inject the feedback box below directly into your documentation page's Shadow DOM, isolating styles and linking reader reactions directly to the continuous payouts system.</p>
                 </div>
 
                 <div className="docudrip-embedded-widget">
@@ -188,39 +258,49 @@ export default function Sandbox({ streams, setStreams, pools }) {
                   </div>
                   <div className="widget-question">Was this documentation page helpful?</div>
                   <div className="widget-actions">
-                    <button className="widget-vote-btn upvote" onClick={() => voteWidget('up')}>
+                    <button 
+                      className="widget-vote-btn upvote" 
+                      onClick={() => handleVote(true)}
+                      disabled={voteMutation.isPending}
+                    >
                       <ThumbsUp size={16} /> Helpful
                     </button>
-                    <button className="widget-vote-btn downvote" onClick={() => voteWidget('down')}>
+                    <button 
+                      className="widget-vote-btn downvote" 
+                      onClick={() => handleVote(false)}
+                      disabled={voteMutation.isPending}
+                    >
                       <ThumbsDown size={16} /> Unhelpful
                     </button>
                   </div>
                   <div className="widget-meta">
                     Current Rating: <span className="rating-badge" style={{ color: ratingColor }}>{rating}%</span>
-                    ({selectedStream.totalVotes} readers)
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            <div className="widget-effect-panel">
-              <h4>Real-time Multiplier Impact</h4>
-              <div className="multiplier-display">
-                <div className="m-card">
-                  <span className="m-lbl">Current Stream Rate</span>
-                  <span className="m-val highlight">{(ratePerSec * 60).toFixed(4)} USDC/min</span>
+            {selectedStream && (
+              <div className="widget-effect-panel">
+                <h4>Dynamic Flow-Multiplier Effect</h4>
+                <div className="multiplier-display">
+                  <div className="m-card">
+                    <span className="m-lbl">Live Flow Rate</span>
+                    <span className="m-val highlight">{flowRateMin} USDC/min</span>
+                  </div>
+                  <div className="m-card">
+                    <span className="m-lbl">Calculated Multiplier</span>
+                    <span className="m-val">{multiplier.toFixed(1)}x</span>
+                  </div>
                 </div>
-                <div className="m-card">
-                  <span className="m-lbl">Feedback Multiplier</span>
-                  <span className="m-val">{feedbackMult.toFixed(1)}x</span>
-                </div>
+                <p className="multiplier-explanation">
+                  <Info className="info-icon" size={16} /> Upvotes scale the writer's micro-payout stream up to **1.5x** rewards. Downvotes reduce the rating and throttle flow rates down to **0.5x**.
+                </p>
               </div>
-              <p className="multiplier-explanation">
-                <Info className="info-icon" size={16} /> Upvotes increase the reader rating, scaling the contributor's stream multiplier up to **1.5x**. Downvotes drop the rating and can throttle the multiplier down to **0.5x**.
-              </p>
-            </div>
+            )}
           </div>
         </div>
+
       </div>
     </div>
   );

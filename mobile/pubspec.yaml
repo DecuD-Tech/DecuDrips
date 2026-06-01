@@ -1,0 +1,30 @@
+name: docudrip_mobile
+description: "DocuDrip continuous micro-funding mobile client companion dashboard."
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.5
+
+  # Simon Binder's Drift Persistence Stack (https://drift.simonbinder.eu/)
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.1
+  path: ^1.8.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.1
+
+  # Code generation tools
+  drift_dev: ^2.20.0
+  build_runner: ^2.4.6
+
+flutter:
+  uses-material-design: true
