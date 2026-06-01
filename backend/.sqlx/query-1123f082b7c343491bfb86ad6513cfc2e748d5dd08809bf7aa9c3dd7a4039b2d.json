@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE webhook_events SET processed = TRUE WHERE delivery_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1123f082b7c343491bfb86ad6513cfc2e748d5dd08809bf7aa9c3dd7a4039b2d"
+}

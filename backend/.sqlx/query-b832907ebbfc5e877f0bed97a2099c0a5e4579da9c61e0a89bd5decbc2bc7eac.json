@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE pools\n        SET status = $2\n        WHERE id = $1\n        RETURNING id, owner_id, repo_full_name, funding_amount, base_rate, total_dripped, status, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "funding_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "base_rate",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_dripped",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b832907ebbfc5e877f0bed97a2099c0a5e4579da9c61e0a89bd5decbc2bc7eac"
+}

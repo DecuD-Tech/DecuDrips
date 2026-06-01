@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO streams (pool_id, author_id, pr_number, file_path, character_count, locale)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Text",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8535de6e179c57b96684416cc952ef8759b968596779424139131f8f8556e98b"
+}

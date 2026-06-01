@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO locale_multipliers (pool_id, locale, multiplier)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (pool_id, locale) DO UPDATE\n        SET multiplier = EXCLUDED.multiplier\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c03ca76698d42d9f3770bd6fef51ce87721a039045a8bb8b1eaaf155ce01596d"
+}

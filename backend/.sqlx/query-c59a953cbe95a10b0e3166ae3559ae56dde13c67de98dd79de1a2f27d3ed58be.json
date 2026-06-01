@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO webhook_events (delivery_id, event_type, payload)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (delivery_id) DO NOTHING\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c59a953cbe95a10b0e3166ae3559ae56dde13c67de98dd79de1a2f27d3ed58be"
+}
