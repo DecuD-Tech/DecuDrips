@@ -1,0 +1,9 @@
+* **Overview**
+  * [Introduction](README.md)
+  * [Architecture & Data Flows](architecture.md)
+
+* **Components Specification**
+  * [Rust API Server Spec](backend.md)
+  * [React Dashboard SPA](frontend.md)
+  * [Embeddable Widget Spec](widget.md)
+  * [Flutter Mobile Caching](mobile.md)

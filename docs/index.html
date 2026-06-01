@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DocuDrip Protocol — Technical Documentation</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="description" content="Technical Documentation for the DocuDrip Continuous Micro-Funding Protocol" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  
+  <!-- Premium Dark Theme Stylesheet -->
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify-themeable@0/dist/css/theme-simple-dark.css" />
+  
+  <style>
+    /* Sleek custom adjustments to match DocuDrip Zinc/Cyan branding */
+    :root {
+      --theme-color: #00f0ff;
+      --base-background-color: #09090b; /* Zinc-950 base */
+      --sidebar-background: #0f0f12; /* Zinc-900 surface */
+      --sidebar-border-color: rgba(255, 255, 255, 0.08);
+      --link-color: #00f0ff;
+      --link-color--hover: #ff007f;
+      --code-inline-background: rgba(255, 255, 255, 0.05);
+      --code-inline-color: #00f0ff;
+      --code-theme-background: #060913;
+      --code-theme-border-color: rgba(255, 255, 255, 0.08);
+      --mono-hue: 240;
+    }
+    
+    .sidebar {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+    }
+    
+    .markdown-section {
+      font-family: 'Inter', -apple-system, sans-serif;
+      max-width: 800px;
+    }
+
+    /* custom styling for visual lists */
+    li {
+      margin: 0.25rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">Loading DocuDrip developer manuals...</div>
+  <script>
+    window.$docsify = {
+      name: 'DocuDrip Protocol',
+      repo: 'https://github.com/XQurator-Tech/DecuDrips',
+      loadSidebar: true,
+      subMaxLevel: 2,
+      homepage: 'README.md',
+      auto2top: true,
+      themeColor: '#00f0ff',
+      executeScript: true
+    }
+  </script>
+  
+  <!-- Docsify Core -->
+  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+  <!-- Docsify Themeable plugin -->
+  <script src="//cdn.jsdelivr.net/npm/docsify-themeable@0"></script>
+  <!-- Prism Syntax Highlighters for Rust & Dart -->
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-rust.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-dart.min.js"></script>
+</body>
+</html>
