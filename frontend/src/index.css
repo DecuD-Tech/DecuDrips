@@ -4,28 +4,29 @@
   --font-display: 'Space Grotesk', sans-serif;
 
   /* Color Palette (Taste-Skill Dark Tech) */
-  --bg-deep: hsl(240, 10%, 4%);
-  --bg-surface: hsla(240, 10%, 6%, 0.8);
-  --bg-surface-solid: hsl(240, 10%, 6%);
+  --bg-deep: #09090b; /* zinc-950 base */
+  --bg-surface: rgba(15, 15, 18, 0.65); /* glassmorphic surface */
+  --bg-surface-solid: #0f0f12;
   --border-light: rgba(255, 255, 255, 0.08);
-  --border-focus: hsla(184, 100%, 50%, 0.4);
+  --border-focus: rgba(0, 240, 255, 0.40);
 
-  --clr-primary: hsl(184, 100%, 50%); /* Electric Cyan */
-  --clr-primary-glow: hsla(184, 100%, 50%, 0.10);
+  --clr-primary: #00f0ff; /* Electric Cyan */
+  --clr-primary-glow: rgba(0, 240, 255, 0.15);
   
-  --clr-secondary: hsl(184, 100%, 50%); /* Stripped out hot pink, locked to cyan */
-  --clr-secondary-glow: hsla(184, 100%, 50%, 0.10);
+  --clr-secondary: #ff007f; /* Hot Pink / Magenta for multi-boosts */
+  --clr-secondary-glow: rgba(255, 0, 127, 0.15);
   
-  --clr-success: hsl(150, 80%, 40%); 
-  --clr-success-glow: hsla(150, 80%, 40%, 0.10);
-  --clr-warning: hsl(38, 90%, 50%); 
-  --clr-purple: hsl(240, 10%, 15%); /* Neutralized */
+  --clr-success: #10b981; /* Emerald Green */
+  --clr-success-glow: rgba(16, 185, 129, 0.15);
+  --clr-warning: #f59e0b; /* Amber/Orange */
+  --clr-purple: #8b5cf6; /* Vibrant Purple */
+  --clr-purple-glow: rgba(139, 92, 246, 0.15);
 
   --text-main: hsl(0, 0%, 98%);
   --text-muted: hsl(240, 5%, 65%);
   
   --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --glass-blur: blur(8px);
+  --glass-blur: blur(12px);
   --shadow-premium: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
