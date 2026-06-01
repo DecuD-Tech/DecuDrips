@@ -9,11 +9,16 @@ use tower_http::trace::TraceLayer;
 
 use crate::state::AppState;
 
+pub mod auth;
+pub mod webhooks;
+
 /// Build the complete Axum router with all route groups and middleware.
 pub fn build_router(state: AppState) -> Router {
     let api = Router::new()
         // Health check
-        .route("/health", get(health_check));
+        .route("/health", get(health_check))
+        .nest("/auth", auth::router())
+        .nest("/webhooks", webhooks::router());
 
     // Route groups will be added as they're implemented:
     // Phase 2: auth routes (OAuth + callback)
