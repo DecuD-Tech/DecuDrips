@@ -11,6 +11,10 @@ use crate::state::AppState;
 
 pub mod auth;
 pub mod webhooks;
+pub mod users;
+pub mod pools;
+pub mod streams;
+pub mod stats;
 
 /// Build the complete Axum router with all route groups and middleware.
 pub fn build_router(state: AppState) -> Router {
@@ -18,7 +22,11 @@ pub fn build_router(state: AppState) -> Router {
         // Health check
         .route("/health", get(health_check))
         .nest("/auth", auth::router())
-        .nest("/webhooks", webhooks::router());
+        .nest("/webhooks", webhooks::router())
+        .nest("/users", users::router())
+        .nest("/pools", pools::router())
+        .nest("/streams", streams::router())
+        .nest("/stats", stats::router());
 
     // Route groups will be added as they're implemented:
     // Phase 2: auth routes (OAuth + callback)

@@ -1,7 +1,23 @@
+use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::error::AppError;
+
+#[derive(Debug)]
+pub struct StreamRow {
+    pub id: Uuid,
+    pub pool_id: Uuid,
+    pub author_id: Uuid,
+    pub pr_number: Option<i32>,
+    pub file_path: String,
+    pub character_count: i32,
+    pub locale: String,
+    pub accumulated: Decimal,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
 
 /// Creates a new stream (called by the webhook handler).
 pub async fn create_stream(
@@ -51,4 +67,40 @@ pub async fn find_active_pool_for_repo(
     .await?;
 
     Ok(result.map(|r| r.id))
+}
+
+pub async fn list_streams_by_pool(
+    pool: &PgPool,
+    pool_id: Uuid,
+) -> Result<Vec<StreamRow>, AppError> {
+    let result = sqlx::query_as!(
+        StreamRow,
+        r#"
+        SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, status, created_at
+        FROM streams
+        WHERE pool_id = $1
+        ORDER BY created_at DESC
+        "#,
+        pool_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(result)
+}
+
+pub async fn get_stream_by_id(pool: &PgPool, id: Uuid) -> Result<Option<StreamRow>, AppError> {
+    let result = sqlx::query_as!(
+        StreamRow,
+        r#"
+        SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, status, created_at
+        FROM streams
+        WHERE id = $1
+        "#,
+        id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(result)
 }
