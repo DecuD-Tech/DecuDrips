@@ -10,6 +10,13 @@ This document serves as the authoritative local technical specification for ever
 
 ### Epic 1: Database Phase 1 Schema Migration (`[database]`)
 
+- [x] **#1.1** `[database]` `[schema]` Create `claims` table migration with status constraints (`pending`, `processing`, `settled`, `failed`, `cancelled`)
+- [x] **#1.2** `[database]` `[schema]` Create `settlement_accounts` table migration with unique user/provider constraints
+- [x] **#1.3** `[database]` `[schema]` Create `audit_events` append-only log table migration with indexes
+- [x] **#1.4** `[database]` `[schema]` Create `widget_nonces` ephemeral token table migration with expiration indexes
+- [x] **#1.5** `[database]` `[schema]` Add `expires_at` column & index to `webhook_events` table
+- [x] **#1.6** `[database]` `[schema]` Add `fingerprint_hash`, `user_agent`, `decay_weight` & compound index to `votes` table
+
 #### #1.1 Create `claims` table migration with status constraints
 * **Target File:** `backend/migrations/20260801000001_phase1_hardening.sql`
 * **Subsystem:** `backend` / `database`
@@ -133,6 +140,11 @@ This document serves as the authoritative local technical specification for ever
 ---
 
 ### Epic 2: Server Security, Middleware & Audit Engine (`[backend]`)
+- [x] **#2.1** `[backend]` `[security]` Build `ip_extractor.rs` middleware parsing `X-Forwarded-For`, `X-Real-IP`, and socket info
+- [x] **#2.2** `[backend]` `[security]` Replace `CorsLayer::permissive()` with configurable `CORS_ALLOWED_ORIGINS` allowlist
+- [ ] **#2.3** `[backend]` `[security]` Integrate `tower-governor` token-bucket rate limiter across anonymous and authed routes
+- [x] **#2.4** `[backend]` `[audit]` Build `audit::log_event()` logger module and database query helpers
+- [x] **#2.5** `[backend]` `[security]` Inject Content-Security-Policy (CSP) headers into static asset routes (`/widget.js`)
 
 #### #2.1 Build `ip_extractor.rs` middleware for client IP resolution
 * **Target File:** `backend/src/middleware/ip_extractor.rs`

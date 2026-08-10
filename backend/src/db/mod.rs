@@ -7,6 +7,7 @@ pub mod locale;
 pub mod votes;
 pub mod transactions;
 pub mod stats;
-
-
-
+pub mod claims;
+pub mod settlement_accounts;
+pub mod audit;
+pub mod nonces;

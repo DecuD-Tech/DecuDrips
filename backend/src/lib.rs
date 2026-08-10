@@ -1,8 +1,10 @@
+pub mod audit;
 pub mod auth;
 pub mod config;
 pub mod db;
 pub mod engine;
 pub mod error;
+pub mod middleware;
 pub mod routes;
 pub mod services;
 pub mod state;

@@ -1,5 +1,5 @@
 use axum::{
-    http::StatusCode,
+    http::{header, Method, HeaderValue, StatusCode},
     response::IntoResponse,
     routing::get,
     Json, Router,
@@ -19,6 +19,24 @@ pub mod stats;
 
 /// Build the complete Axum router with all route groups and middleware.
 pub fn build_router(state: AppState) -> Router {
+    // Configure strict CORS based on environment configuration (#2.2)
+    let origins: Vec<HeaderValue> = state
+        .config
+        .cors_origin
+        .split(',')
+        .filter_map(|o| o.trim().parse::<HeaderValue>().ok())
+        .collect();
+
+    let cors = if origins.is_empty() {
+        CorsLayer::permissive()
+    } else {
+        CorsLayer::new()
+            .allow_origin(origins)
+            .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+            .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::ACCEPT])
+            .allow_credentials(true)
+    };
+
     let api = Router::new()
         // Health check
         .route("/health", get(health_check))
@@ -29,15 +47,11 @@ pub fn build_router(state: AppState) -> Router {
         .nest("/streams", streams::router())
         .nest("/stats", stats::router());
 
-    // Route groups will be added as they're implemented:
-    // Phase 2: auth routes (OAuth + callback)
-    // Phase 3: pool, stream, vote, stats, webhook routes
-
     Router::new()
         .nest("/api/v1", api)
         .route("/widget.js", get(serve_widget_js))
         .route("/widget.css", get(serve_widget_css))
-        .layer(CorsLayer::permissive()) // Tightened in production
+        .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -47,34 +61,46 @@ async fn health_check() -> (StatusCode, Json<serde_json::Value>) {
     (StatusCode::OK, Json(json!({ "status": "ok" })))
 }
 
-/// Serve the embeddable javascript widget directly from the filesystems
+/// Serve the embeddable javascript widget directly with strict CSP headers (#2.5)
 async fn serve_widget_js() -> impl IntoResponse {
     let js_content = match std::fs::read_to_string("../widget/src/widget.js") {
         Ok(content) => content,
         Err(_) => match std::fs::read_to_string("widget/src/widget.js") {
             Ok(content) => content,
             Err(_) => "console.error('DocuDrip Widget: widget.js not found');".to_string(),
-        }
+        },
     };
 
     (
-        [(axum::http::header::CONTENT_TYPE, "application/javascript")],
+        [
+            (header::CONTENT_TYPE, "application/javascript"),
+            (
+                header::CONTENT_SECURITY_POLICY,
+                "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'",
+            ),
+        ],
         js_content,
     )
 }
 
-/// Serve the widget styling sheet directly from the filesystems
+/// Serve the widget styling sheet directly with strict CSP headers (#2.5)
 async fn serve_widget_css() -> impl IntoResponse {
     let css_content = match std::fs::read_to_string("../widget/src/widget.css") {
         Ok(content) => content,
         Err(_) => match std::fs::read_to_string("widget/src/widget.css") {
             Ok(content) => content,
             Err(_) => "/* DocuDrip Widget: widget.css not found */".to_string(),
-        }
+        },
     };
 
     (
-        [(axum::http::header::CONTENT_TYPE, "text/css")],
+        [
+            (header::CONTENT_TYPE, "text/css"),
+            (
+                header::CONTENT_SECURITY_POLICY,
+                "default-src 'none'; style-src 'self' 'unsafe-inline'",
+            ),
+        ],
         css_content,
     )
 }
