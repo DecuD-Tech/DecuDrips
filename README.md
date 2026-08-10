@@ -104,4 +104,5 @@ All styles are completely isolated inside the **Shadow DOM**, shielding the widg
 
 ## ⚖️ License
 
-This project is open source. Release guidelines and contributor code of conducts will be detailed in subsequent updates.
+This project is open-source software licensed under the [MIT License](file:///Users/adewuyi/Development/drips.repo/decudrips/LICENSE).
+

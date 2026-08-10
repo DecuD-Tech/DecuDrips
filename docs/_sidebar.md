@@ -1,6 +1,7 @@
 * **Overview**
   * [Introduction](README.md)
   * [Architecture & Data Flows](architecture.md)
+  * [Strategic Roadmap](roadmap.md)
 
 * **Components Specification**
   * [Rust API Server Spec](backend.md)
