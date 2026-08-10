@@ -300,6 +300,11 @@ This document serves as the authoritative local technical specification for ever
 ---
 
 ### Epic 5: Anti-Sybil Protections & Widget Hardening (`[widget]`)
+- [x] **#5.1** `[backend]` `[widget]` Implement `GET /api/v1/widget/nonce` generation and TTL persistence
+- [x] **#5.2** `[backend]` `[widget]` Implement weighted exponential vote time-decay engine
+- [x] **#5.3** `[widget]` `[security]` Build browser fingerprint generator in `widget.js`
+- [x] **#5.4** `[widget]` `[security]` Integrate pre-fetch nonce authentication flow into `<docudrip-widget>`
+- [x] **#5.5** `[widget]` `[widget]` Implement dynamic backend URL resolution in `widget.js`
 
 #### #5.1 Implement `GET /api/v1/widget/nonce` generation and TTL persistence
 * **Target File:** `backend/src/routes/widget.rs`

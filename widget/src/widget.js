@@ -1,5 +1,24 @@
+import { generateFingerprint } from './fingerprint.js';
+
 (function () {
-  const BACKEND_URL = 'http://localhost:8080/api/v1';
+  // Dynamically resolve backend API base URL (#5.5)
+  function resolveBackendUrl() {
+    const currentScript = document.currentScript;
+    if (currentScript && currentScript.hasAttribute('data-backend-url')) {
+      return currentScript.getAttribute('data-backend-url');
+    }
+    if (currentScript && currentScript.src) {
+      try {
+        const url = new URL(currentScript.src);
+        return `${url.origin}/api/v1`;
+      } catch (e) {
+        // Fallback if parsing fails
+      }
+    }
+    return 'http://localhost:8080/api/v1';
+  }
+
+  const BACKEND_URL = resolveBackendUrl();
 
   class DocuDripWidget extends HTMLElement {
     constructor() {
@@ -8,6 +27,7 @@
       this.streamId = null;
       this.rating = null;
       this.hasVoted = false;
+      this.fingerprint = generateFingerprint(); // Client-side anti-sybil fingerprint (#5.3)
     }
 
     async connectedCallback() {
@@ -17,16 +37,13 @@
         return;
       }
 
-      // Check if user has already voted on this stream locally
       this.hasVoted = localStorage.getItem(`docudrip_voted_${this.streamId}`) === 'true';
 
-      // Load widget stylesheet
       const linkElem = document.createElement('link');
       linkElem.setAttribute('rel', 'stylesheet');
-      linkElem.setAttribute('href', 'http://localhost:8080/widget.css'); // Loaded from backend static mount or dev port
+      linkElem.setAttribute('href', `${BACKEND_URL.replace('/api/v1', '')}/widget.css`);
       this.shadowRoot.appendChild(linkElem);
 
-      // Create main widget card container
       this.container = document.createElement('div');
       this.container.className = 'docudrip-widget-card';
       this.shadowRoot.appendChild(this.container);
@@ -47,8 +64,24 @@
       }
     }
 
+    async fetchNonce() {
+      try {
+        const response = await fetch(`${BACKEND_URL}/widget/nonce?stream_id=${this.streamId}`);
+        if (response.ok) {
+          const data = await response.json();
+          return data.nonce;
+        }
+      } catch (err) {
+        console.error('[DocuDrip Widget] Error fetching nonce:', err);
+      }
+      return null;
+    }
+
     async submitVote(isUpvote) {
       if (this.hasVoted) return;
+
+      // Pre-fetch single-use nonce token (#5.4)
+      const nonce = await this.fetchNonce();
 
       try {
         const response = await fetch(`${BACKEND_URL}/streams/${this.streamId}/vote`, {
@@ -58,7 +91,8 @@
           },
           body: JSON.stringify({
             is_upvote: isUpvote,
-            voter_ip: null, // Let backend automatically extract IP
+            fingerprint_hash: this.fingerprint,
+            nonce: nonce,
           }),
         });
 
@@ -77,9 +111,9 @@
 
     render() {
       const showRating = this.rating !== null;
-      let ratingColor = '#ff007f'; // Pink
-      if (this.rating >= 90) ratingColor = '#10b981'; // Green
-      else if (this.rating >= 75) ratingColor = '#f59e0b'; // Amber
+      let ratingColor = '#ff007f';
+      if (this.rating >= 90) ratingColor = '#10b981';
+      else if (this.rating >= 75) ratingColor = '#f59e0b';
 
       this.container.innerHTML = `
         <div class="widget-brand">
@@ -123,7 +157,6 @@
         ` : ''}
       `;
 
-      // Wire button click handlers if user hasn't voted yet
       if (!this.hasVoted) {
         const upBtn = this.container.querySelector('.upvote-btn');
         const downBtn = this.container.querySelector('.downvote-btn');
@@ -134,7 +167,6 @@
     }
   }
 
-  // Register custom component if not already registered
   if (!customElements.get('docudrip-widget')) {
     customElements.define('docudrip-widget', DocuDripWidget);
   }

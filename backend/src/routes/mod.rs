@@ -19,6 +19,7 @@ pub mod stats;
 pub mod streams;
 pub mod users;
 pub mod webhooks;
+pub mod widget;
 
 /// Build the complete Axum router with all route groups and middleware.
 pub fn build_router(state: AppState) -> Router {
@@ -51,7 +52,8 @@ pub fn build_router(state: AppState) -> Router {
         .nest("/stats", stats::router())
         .nest("/claims", claims::router())
         .nest("/settlement-accounts", settlement_accounts::router())
-        .nest("/audit", audit::router());
+        .nest("/audit", audit::router())
+        .nest("/widget", widget::router());
 
     Router::new()
         .nest("/api/v1", api)
