@@ -347,6 +347,11 @@ This document serves as the authoritative local technical specification for ever
 ---
 
 ### Epic 6: Frontend Dashboard SPA (React 19) (`[frontend]`)
+- [x] **#6.1** `[frontend]` `[state]` Create `claimStore.js` Zustand store
+- [x] **#6.2** `[frontend]` `[settlement]` Build `ClaimPage.jsx` with stream selection and submission form
+- [x] **#6.3** `[frontend]` `[settlement]` Build `SettlementSetup.jsx` view for managing payout accounts
+- [x] **#6.4** `[frontend]` `[security]` Build `AuditTrail.jsx` view for chronological event visualization
+- [x] **#6.5** `[frontend]` `[ui]` Update `App.jsx` navigation shell with Claims & Audit tabs
 
 #### #6.1 Create `claimStore.js` Zustand store
 * **Target File:** `frontend/src/stores/claimStore.js`

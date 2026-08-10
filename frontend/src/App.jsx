@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Droplets, LayoutDashboard, Activity, Terminal, Database, Zap, HeartHandshake, ThumbsUp, LogOut, User } from 'lucide-react';
+import { Droplets, LayoutDashboard, Activity, Terminal, Database, Zap, HeartHandshake, ThumbsUp, LogOut, User, Wallet, Building2, ScrollText } from 'lucide-react';
 import { useAuthStore } from './stores/authStore';
 import { api } from './lib/api';
 
@@ -9,6 +9,9 @@ import Dashboard from './components/Dashboard';
 import Streams from './components/Streams';
 import Sandbox from './components/Sandbox';
 import LoginPage from './pages/LoginPage';
+import ClaimPage from './pages/ClaimPage';
+import SettlementSetup from './pages/SettlementSetup';
+import AuditTrail from './pages/AuditTrail';
 
 import './index.css';
 
@@ -110,6 +113,15 @@ function DashboardShell() {
           <button className={`nav-btn ${activeTab === 'streams' ? 'active' : ''}`} onClick={() => setActiveTab('streams')}>
             <Activity size={18} strokeWidth={1.5} style={{ marginRight: '8px' }} /> Active Streams
           </button>
+          <button className={`nav-btn ${activeTab === 'claims' ? 'active' : ''}`} onClick={() => setActiveTab('claims')}>
+            <Wallet size={18} strokeWidth={1.5} style={{ marginRight: '8px' }} /> Claims & Payouts
+          </button>
+          <button className={`nav-btn ${activeTab === 'settlement' ? 'active' : ''}`} onClick={() => setActiveTab('settlement')}>
+            <Building2 size={18} strokeWidth={1.5} style={{ marginRight: '8px' }} /> Destinations
+          </button>
+          <button className={`nav-btn ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>
+            <ScrollText size={18} strokeWidth={1.5} style={{ marginRight: '8px' }} /> Audit Ledger
+          </button>
           <button className={`nav-btn ${activeTab === 'sandbox' ? 'active' : ''}`} onClick={() => setActiveTab('sandbox')}>
             <Terminal size={18} strokeWidth={1.5} style={{ marginRight: '8px' }} /> Integration Sandbox
           </button>
@@ -167,6 +179,9 @@ function DashboardShell() {
 
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'streams' && <Streams />}
+        {activeTab === 'claims' && <ClaimPage />}
+        {activeTab === 'settlement' && <SettlementSetup />}
+        {activeTab === 'audit' && <AuditTrail />}
         {activeTab === 'sandbox' && <Sandbox />}
       </main>
 
