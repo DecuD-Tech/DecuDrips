@@ -235,6 +235,13 @@ This document serves as the authoritative local technical specification for ever
 ---
 
 ### Epic 4: Settlement Engine & Claims Architecture (`[backend]`)
+- [x] **#4.1** `[backend]` `[settlement]` Define `SettlementAdapter` async trait and request/response models
+- [x] **#4.2** `[backend]` `[settlement]` Implement `PoolSafetyConfig` safety cap validator ($1.00 min, 25% pool max, daily caps)
+- [x] **#4.3** `[backend]` `[settlement]` Implement Stripe Connect settlement adapter with idempotency keys
+- [x] **#4.4** `[backend]` `[settlement]` Implement USDC / Base crypto settlement adapter
+- [x] **#4.5** `[backend]` `[settlement]` Implement `POST /api/v1/claims` submission and `POST /claims/:id/cancel` endpoints
+- [x] **#4.6** `[backend]` `[settlement]` Implement `GET/POST/DELETE /api/v1/settlement-accounts` management endpoints
+- [x] **#4.7** `[backend]` `[settlement]` Implement `GET /api/v1/audit` endpoints for contributors and pool sponsors
 
 #### #4.1 Define `SettlementAdapter` async trait and request/response models
 * **Target File:** `backend/src/settlement/mod.rs`

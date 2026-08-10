@@ -7,4 +7,5 @@ pub mod error;
 pub mod middleware;
 pub mod routes;
 pub mod services;
+pub mod settlement;
 pub mod state;

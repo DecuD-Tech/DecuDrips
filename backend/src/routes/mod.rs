@@ -10,12 +10,15 @@ use tower_http::trace::TraceLayer;
 
 use crate::state::AppState;
 
+pub mod audit;
 pub mod auth;
-pub mod webhooks;
-pub mod users;
+pub mod claims;
 pub mod pools;
-pub mod streams;
+pub mod settlement_accounts;
 pub mod stats;
+pub mod streams;
+pub mod users;
+pub mod webhooks;
 
 /// Build the complete Axum router with all route groups and middleware.
 pub fn build_router(state: AppState) -> Router {
@@ -45,7 +48,10 @@ pub fn build_router(state: AppState) -> Router {
         .nest("/users", users::router())
         .nest("/pools", pools::router())
         .nest("/streams", streams::router())
-        .nest("/stats", stats::router());
+        .nest("/stats", stats::router())
+        .nest("/claims", claims::router())
+        .nest("/settlement-accounts", settlement_accounts::router())
+        .nest("/audit", audit::router());
 
     Router::new()
         .nest("/api/v1", api)
