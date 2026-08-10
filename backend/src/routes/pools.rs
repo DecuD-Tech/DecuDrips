@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::auth::middleware::{AuthUser, OptionalAuth, SponsorUser};
-use crate::db::{pools, streams};
+use crate::db::pools;
 use crate::error::AppError;
 use crate::state::AppState;
 

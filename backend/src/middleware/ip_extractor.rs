@@ -25,7 +25,7 @@ pub fn extract_client_ip(
     // 2. Check X-Real-IP header
     if let Some(real_ip) = headers.get("X-Real-IP") {
         if let Ok(value) = real_ip.to_str() {
-            let trimmed = real_ip.trim();
+            let trimmed = value.trim();
             if !trimmed.is_empty() {
                 return trimmed.to_string();
             }

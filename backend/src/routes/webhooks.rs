@@ -6,12 +6,14 @@ use axum::{
     routing::post,
     Router,
 };
+use chrono::Utc;
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use serde_json::Value;
 use sha2::Sha256;
 
 use crate::db::{streams, users};
+use crate::engine::diff_parser;
 use crate::error::AppError;
 use crate::services::github::GitHubClient;
 use crate::state::AppState;
@@ -62,6 +64,24 @@ fn verify_signature(secret: &str, signature: &str, body: &[u8]) -> Result<(), Ap
         .map_err(|_| AppError::InvalidSignature)
 }
 
+/// Time-bounded replay window validation (#3.1). Rejects webhooks older than 300 seconds.
+fn validate_webhook_timestamp(headers: &HeaderMap) -> Result<(), AppError> {
+    if let Some(ts_header) = headers.get("x-github-hook-timestamp") {
+        if let Ok(ts_str) = ts_header.to_str() {
+            if let Ok(ts) = ts_str.parse::<i64>() {
+                let now = Utc::now().timestamp();
+                let age = now - ts;
+                if age > 300 || age < -60 {
+                    return Err(AppError::BadRequest(
+                        "Webhook timestamp outside 5-minute replay window".into(),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Smart filter to determine if a file is a documentation file.
 pub fn is_doc_file(path: &str) -> bool {
     let doc_extensions = [".md", ".mdx", ".rst", ".adoc", ".txt"];
@@ -87,7 +107,10 @@ async fn github_webhook(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<impl IntoResponse, AppError> {
-    // 1. Verify signature
+    // 1. Replay window check (#3.1)
+    validate_webhook_timestamp(&headers)?;
+
+    // 2. Verify signature
     let signature = headers
         .get("x-hub-signature-256")
         .and_then(|v| v.to_str().ok())
@@ -95,7 +118,7 @@ async fn github_webhook(
 
     verify_signature(&state.config.github_webhook_secret, signature, &body)?;
 
-    // 2. Extract Event Type and Delivery ID
+    // 3. Extract Event Type and Delivery ID
     let event_type = headers
         .get("x-github-event")
         .and_then(|v| v.to_str().ok())
@@ -106,7 +129,7 @@ async fn github_webhook(
         .and_then(|v| v.to_str().ok())
         .ok_or_else(|| AppError::BadRequest("Missing x-github-delivery header".into()))?;
 
-    // 3. Idempotency Check
+    // 4. Idempotency Check
     let payload_json: Value = serde_json::from_slice(&body).map_err(|e| {
         AppError::BadRequest(format!("Invalid JSON payload: {e}"))
     })?;
@@ -130,7 +153,7 @@ async fn github_webhook(
         return Ok(StatusCode::OK);
     }
 
-    // 4. Process "pull_request" events
+    // 5. Process "pull_request" events
     if event_type == "pull_request" {
         let payload: WebhookPayload = serde_json::from_value(payload_json).unwrap();
 
@@ -168,12 +191,21 @@ async fn process_merged_pr(
         return Ok(());
     };
 
-    // B. Fetch PR file diffs via GitHub API
+    // B. Verify PR author credentials and merge state via GitHub API (#3.4)
     let github = GitHubClient::new();
+    if let Ok(details) = github.fetch_pr_details(repo_full_name, pr.number).await {
+        if !details.merged {
+            return Err(AppError::BadRequest("PR was closed without merging".into()));
+        }
+        if details.user.login != pr.user.login {
+            return Err(AppError::BadRequest("Author mismatch in PR details".into()));
+        }
+    }
+
+    // C. Fetch PR file diffs via GitHub API
     let pr_files = github.fetch_pr_files(repo_full_name, pr.number).await?;
 
-    // C. Upsert Author
-    // Note: This relies on the GitHub ID to ensure consistency.
+    // D. Upsert Author
     let author = users::upsert_from_github(
         &state.db,
         pr.user.id,
@@ -182,11 +214,29 @@ async fn process_merged_pr(
     )
     .await?;
 
-    // D. Filter and create streams
+    // E. Filter and create streams with AST diff analysis (#3.2, #3.3)
     for file in pr_files {
-        if is_doc_file(&file.filename) && file.additions > 0 {
-            // Simple locale heuristic (could be improved later)
-            // e.g. docs/es/guide.md -> "es"
+        if is_doc_file(&file.filename) {
+            // Apply AST diff parser if patch content is present
+            let character_count = if let Some(patch) = &file.patch {
+                let analysis = diff_parser::analyze_diff(patch);
+                if analysis.is_formatting_only {
+                    tracing::info!(
+                        "Skipping {} in PR #{}: formatting/TOC change only",
+                        file.filename,
+                        pr.number
+                    );
+                    continue;
+                }
+                analysis.meaningful_additions
+            } else {
+                file.additions
+            };
+
+            if character_count <= 0 {
+                continue;
+            }
+
             let locale = if file.filename.contains("/es/") {
                 "es"
             } else if file.filename.contains("/zh/") {
@@ -198,8 +248,10 @@ async fn process_merged_pr(
             };
 
             tracing::info!(
-                "Creating stream for PR #{} file: {} ({} chars)",
-                pr.number, file.filename, file.additions
+                "Creating stream for PR #{} file: {} ({} meaningful chars)",
+                pr.number,
+                file.filename,
+                character_count
             );
 
             streams::create_stream(
@@ -208,7 +260,7 @@ async fn process_merged_pr(
                 author.id,
                 pr.number,
                 &file.filename,
-                file.additions,
+                character_count,
                 locale,
             )
             .await?;

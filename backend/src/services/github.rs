@@ -7,7 +7,7 @@ pub struct GitHubClient {
     http: Client,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct GitHubUser {
     pub id: i64,
     pub login: String,
@@ -36,6 +36,13 @@ pub struct PrFile {
     pub deletions: i32,
     pub changes: i32,
     pub status: String,
+    pub patch: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PullRequestDetails {
+    pub merged: bool,
+    pub user: GitHubUser,
 }
 
 impl GitHubClient {
@@ -123,7 +130,7 @@ impl GitHubClient {
         pr_number: i32,
     ) -> Result<Vec<PrFile>, AppError> {
         let url = format!("https://api.github.com/repos/{repo_full_name}/pulls/{pr_number}/files");
-        
+
         let response = self
             .http
             .get(&url)
@@ -145,5 +152,36 @@ impl GitHubClient {
             .map_err(|e| AppError::GitHub(format!("Failed to parse PR files response: {e}")))?;
 
         Ok(files)
+    }
+
+    /// Fetches details of a Pull Request to verify author and merged status (#3.4).
+    pub async fn fetch_pr_details(
+        &self,
+        repo_full_name: &str,
+        pr_number: i32,
+    ) -> Result<PullRequestDetails, AppError> {
+        let url = format!("https://api.github.com/repos/{repo_full_name}/pulls/{pr_number}");
+
+        let response = self
+            .http
+            .get(&url)
+            .header("Accept", "application/vnd.github.v3+json")
+            .send()
+            .await
+            .map_err(|e| AppError::GitHub(format!("Failed to fetch PR details: {e}")))?;
+
+        if !response.status().is_success() {
+            return Err(AppError::GitHub(format!(
+                "GitHub API error fetching PR details: {}",
+                response.status()
+            )));
+        }
+
+        let details: PullRequestDetails = response
+            .json()
+            .await
+            .map_err(|e| AppError::GitHub(format!("Failed to parse PR details response: {e}")))?;
+
+        Ok(details)
     }
 }
