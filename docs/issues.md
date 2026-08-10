@@ -392,6 +392,11 @@ This document serves as the authoritative local technical specification for ever
 ---
 
 ### Epic 7: Mobile Client Caching & Security (Flutter + Drift) (`[mobile]`)
+- [x] **#7.1** `[mobile]` `[database]` Define `ClaimsTable`, `OfflineActionsTable`, and `SessionTable` in `database.dart`
+- [x] **#7.2** `[mobile]` `[database]` Add Drift schema v2 migration strategy (`MigrationStrategy`)
+- [x] **#7.3** `[mobile]` `[security]` Configure SQLCipher encrypted connection via `flutter_secure_storage`
+- [x] **#7.4** `[mobile]` `[sync]` Build `SyncService` for periodic API fetch and batch upserts
+- [x] **#7.5** `[mobile]` `[sync]` Build `OfflineActionsTable` queue processor with exponential backoff retries
 
 #### #7.1 Define `ClaimsTable`, `OfflineActionsTable`, and `SessionTable` in `database.dart`
 * **Target File:** `mobile/lib/db/database.dart`

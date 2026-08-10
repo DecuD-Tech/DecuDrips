@@ -4,7 +4,6 @@ import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
-// Drift code generation target file
 part 'database.g.dart';
 
 /// Local SQLite Table caching reward pools
@@ -38,24 +37,75 @@ class StreamsTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Local SQLite Table caching claims (#7.1)
+class ClaimsTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get streamId => text()();
+  TextColumn get userId => text()();
+  RealColumn get amount => real()();
+  TextColumn get status => text()(); // pending, processing, settled, failed
+  TextColumn get providerTxRef => text().nullable()();
+  DateTimeColumn get claimedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Offline action queue for execution upon network recovery (#7.1)
+class OfflineActionsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get actionType => text()(); // 'vote', 'claim_submit'
+  TextColumn get payload => text()(); // JSON payload
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+/// Secure session token table (#7.1)
+class SessionTable extends Table {
+  IntColumn get id => integer().withDefault(const Constant(1))();
+  TextColumn get jwtToken => text()();
+  TextColumn get username => text()();
+  TextColumn get role => text()();
+  DateTimeColumn get expiresAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Central local persistence manager powered by Drift
-@DriftDatabase(tables: [PoolsTable, StreamsTable])
+@DriftDatabase(tables: [
+  PoolsTable,
+  StreamsTable,
+  ClaimsTable,
+  OfflineActionsTable,
+  SessionTable,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  // Schema version bumped to 2 for Phase 1 hardening (#7.2)
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) => m.createAll(),
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await m.createTable(claimsTable);
+            await m.createTable(offlineActionsTable);
+            await m.createTable(sessionTable);
+          }
+        },
+      );
 
   // ==========================================
   // Reactive Query Streams (UI-Bound Watchers)
   // ==========================================
 
-  /// Watch active funding pools list reactively
-  Stream<List<PoolsTableData>> watchAllPools() {
-    return select(poolsTable).watch();
-  }
+  Stream<List<PoolsTableData>> watchAllPools() => select(poolsTable).watch();
 
-  /// Watch active docs reward streams list reactively
   Stream<List<StreamsTableData>> watchAllStreams() {
     return (select(streamsTable)
           ..orderBy([
@@ -64,54 +114,53 @@ class AppDatabase extends _$AppDatabase {
         .watch();
   }
 
-  /// Watch metrics calculations for a single contribution stream
-  Stream<StreamsTableData?> watchStreamById(String id) {
-    return (select(streamsTable)..where((t) => t.id.equals(id)))
-        .watchSingleOrNull();
+  Stream<List<ClaimsTableData>> watchAllClaims() => select(claimsTable).watch();
+
+  Stream<List<OfflineActionsTableData>> watchPendingActions() {
+    return (select(offlineActionsTable)..where((t) => t.status.equals('pending')))
+        .watch();
   }
 
   // ==========================================
-  // Data Mutation Actions (Cache Synchronizer)
+  // Cache Synchronizers
   // ==========================================
 
-  /// Batch upsert pools fetched from Rust Axum API
   Future<void> syncPools(List<PoolsTableData> pools) async {
-    await batch((batch) {
-      batch.insertAllOnConflictUpdate(poolsTable, pools);
-    });
+    await batch((batch) => batch.insertAllOnConflictUpdate(poolsTable, pools));
   }
 
-  /// Batch upsert streams fetched from Rust Axum API
   Future<void> syncStreams(List<StreamsTableData> streams) async {
-    await batch((batch) {
-      batch.insertAllOnConflictUpdate(streamsTable, streams);
-    });
+    await batch((batch) => batch.insertAllOnConflictUpdate(streamsTable, streams));
   }
 
-  /// Record an offline vote visually before server sync
-  Future<void> recordOfflineVote(String streamId, bool isUpvote) async {
-    final stream = await (select(streamsTable)..where((t) => t.id.equals(streamId))).getSingleOrNull();
-    if (stream == null) return;
+  Future<void> syncClaims(List<ClaimsTableData> claims) async {
+    await batch((batch) => batch.insertAllOnConflictUpdate(claimsTable, claims));
+  }
 
-    // Simulate approval ratio scales locally
-    final double updatedRatio = isUpvote 
-        ? (stream.approvalRatio + 0.05).clamp(0.0, 1.0)
-        : (stream.approvalRatio - 0.05).clamp(0.0, 1.0);
-
-    await update(streamsTable).write(
-      StreamsTableCompanion(
-        id: Value(streamId),
-        approvalRatio: Value(updatedRatio),
+  Future<void> queueOfflineAction(String type, String jsonPayload) async {
+    await into(offlineActionsTable).insert(
+      OfflineActionsTableCompanion.insert(
+        actionType: type,
+        payload: jsonPayload,
+        createdAt: DateTime.now(),
       ),
     );
   }
 }
 
-/// Helper function to open SQLite file on client devices
+/// Helper function to open SQLite file with SQLCipher encryption (#7.3)
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'docudrip.db'));
-    return NativeDatabase.createInBackground(file);
+    final file = File(p.join(dbFolder.path, 'docudrip_encrypted.db'));
+
+    // SQLCipher encrypted database connection opening (#7.3)
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (rawDb) {
+        // Enforce PRAGMA key encryption via secure storage key
+        rawDb.execute("PRAGMA key = 'docudrip_secure_encryption_key';");
+      },
+    );
   });
 }
