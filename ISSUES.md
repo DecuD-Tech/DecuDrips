@@ -142,7 +142,7 @@ This document serves as the authoritative local technical specification for ever
 ### Epic 2: Server Security, Middleware & Audit Engine (`[backend]`)
 - [x] **#2.1** `[backend]` `[security]` Build `ip_extractor.rs` middleware parsing `X-Forwarded-For`, `X-Real-IP`, and socket info
 - [x] **#2.2** `[backend]` `[security]` Replace `CorsLayer::permissive()` with configurable `CORS_ALLOWED_ORIGINS` allowlist
-- [ ] **#2.3** `[backend]` `[security]` Integrate `tower-governor` token-bucket rate limiter across anonymous and authed routes
+- [x] **#2.3** `[backend]` `[security]` Integrate `tower-governor` token-bucket rate limiter across anonymous and authed routes
 - [x] **#2.4** `[backend]` `[audit]` Build `audit::log_event()` logger module and database query helpers
 - [x] **#2.5** `[backend]` `[security]` Inject Content-Security-Policy (CSP) headers into static asset routes (`/widget.js`)
 

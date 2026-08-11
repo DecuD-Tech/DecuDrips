@@ -8,6 +8,7 @@ use serde_json::json;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
+use crate::middleware::rate_limiter;
 use crate::state::AppState;
 
 pub mod audit;
@@ -41,6 +42,9 @@ pub fn build_router(state: AppState) -> Router {
             .allow_credentials(true)
     };
 
+    let anon_rate_limiter = rate_limiter::build_anonymous_rate_limiter();
+    let auth_rate_limiter = rate_limiter::build_authenticated_rate_limiter();
+
     let api = Router::new()
         // Health check
         .route("/health", get(health_check))
@@ -50,10 +54,10 @@ pub fn build_router(state: AppState) -> Router {
         .nest("/pools", pools::router())
         .nest("/streams", streams::router())
         .nest("/stats", stats::router())
-        .nest("/claims", claims::router())
+        .nest("/claims", claims::router().layer(auth_rate_limiter))
         .nest("/settlement-accounts", settlement_accounts::router())
         .nest("/audit", audit::router())
-        .nest("/widget", widget::router());
+        .nest("/widget", widget::router().layer(anon_rate_limiter));
 
     Router::new()
         .nest("/api/v1", api)
