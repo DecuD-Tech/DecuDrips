@@ -1,71 +1,56 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
 use chrono::Utc;
-use rust_decimal::prelude::FromPrimitive;
-use rust_decimal::Decimal;
+use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::auth::middleware::OptionalAuth;
 use crate::db::{locale, pools, streams, votes};
-use crate::engine::calculator;
+use crate::engine::{calculator, quality_scorer};
 use crate::error::AppError;
+use crate::middleware::ip_extractor;
 use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(list_streams))
         .route("/:id", get(get_stream))
-        .route("/:id/vote", post(vote))
+        .route("/:id/vote", post(vote_stream))
 }
 
-/// List all active streams with pre-calculated, on-read accumulated balances & meta
+/// Compute-on-read stream list endpoint.
 async fn list_streams(
     State(state): State<AppState>,
     _auth: OptionalAuth,
 ) -> Result<impl IntoResponse, AppError> {
-    let rows = sqlx::query!(
-        r#"
-        SELECT 
-            s.id, s.pool_id, s.author_id, s.pr_number, s.file_path, s.character_count, s.locale, s.accumulated, s.status, s.created_at,
-            u.username as author_username,
-            p.repo_full_name as pool_repo_name,
-            p.base_rate
-        FROM streams s
-        JOIN users u ON s.author_id = u.id
-        JOIN pools p ON s.pool_id = p.id
-        ORDER BY s.created_at DESC
-        "#
-    )
-    .fetch_all(&state.db)
-    .await?;
-
+    let rows = streams::list_active_streams(&state.db).await?;
     let mut response = Vec::new();
 
     for row in rows {
-        // Fetch multipliers
         let multipliers = locale::get_locale_multipliers(&state.db, row.pool_id).await?;
-        let locale_multiplier = multipliers
+        let _custom_locale_mult = multipliers
             .into_iter()
             .find(|m| m.locale == row.locale)
             .map(|m| m.multiplier.to_string().parse::<f64>().unwrap_or(1.0))
             .unwrap_or(1.0);
 
-        // Fetch approval ratio
         let approval_ratio = votes::get_approval_ratio(&state.db, row.id).await?;
 
-        // Compute dynamic accumulated rewards
+        // Compute dynamic quality score & accumulated rewards (#8.1, #8.2, #8.3)
+        let quality_analysis = quality_scorer::analyze_documentation_quality(&row.file_path);
         let base_rate_f64 = row.base_rate.to_string().parse::<f64>().unwrap_or(0.0);
         let computed_f64 = calculator::calculate_accumulated(
             row.character_count,
             base_rate_f64,
-            locale_multiplier,
+            &row.locale,
             approval_ratio,
+            quality_analysis.quality_score,
             row.created_at,
             Utc::now(),
         );
@@ -73,12 +58,13 @@ async fn list_streams(
         let computed_decimal = Decimal::from_f64(computed_f64).unwrap_or(Decimal::ZERO);
         let total_accumulated = row.accumulated + computed_decimal;
 
-        // Flow rate: base_rate * characters * locale * approval_multiplier / 86400
         let feedback_mult = calculator::feedback_multiplier(approval_ratio);
+        let loc_mult = calculator::locale_multiplier(&row.locale);
         let flow_rate_per_second = (row.character_count as f64)
             * base_rate_f64
-            * locale_multiplier
+            * loc_mult
             * feedback_mult
+            * quality_analysis.quality_score
             / 86_400.0;
 
         response.push(serde_json::json!({
@@ -94,6 +80,7 @@ async fn list_streams(
             "accumulated": total_accumulated,
             "flow_rate_per_second": flow_rate_per_second,
             "approval_ratio": approval_ratio,
+            "quality_multiplier": quality_analysis.quality_score,
             "status": row.status,
         }));
     }
@@ -118,94 +105,87 @@ struct StreamResponse {
 #[derive(Deserialize)]
 struct VoteRequest {
     is_upvote: bool,
-    // Typically we'd extract IP from headers, but passing it in payload or using a mock for V1 is fine.
-    // For production we'd use Axum's ConnectInfo extractor.
+    fingerprint_hash: Option<String>,
     voter_ip: Option<String>,
 }
 
 /// Compute-on-read stream detail fetcher.
-/// This executes the core engine math (pure functions) on demand instead of in a background loop.
 async fn get_stream(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     _auth: OptionalAuth,
 ) -> Result<impl IntoResponse, AppError> {
-    // 1. Fetch stream from DB
     let stream_row = streams::get_stream_by_id(&state.db, id)
         .await?
         .ok_or(AppError::NotFound)?;
 
-    // 2. Fetch parent pool to get the base rate
     let pool_row = pools::get_pool_by_id(&state.db, stream_row.pool_id)
         .await?
         .ok_or(AppError::NotFound)?;
 
-    // 3. Fetch locale multipliers (if any exist for this pool)
-    let multipliers = locale::get_locale_multipliers(&state.db, stream_row.pool_id).await?;
-    let locale_multiplier = multipliers
-        .into_iter()
-        .find(|m| m.locale == stream_row.locale)
-        .map(|m| m.multiplier.to_string().parse::<f64>().unwrap_or(1.0))
-        .unwrap_or(1.0);
-
-    // 4. Fetch community approval ratio
     let approval_ratio = votes::get_approval_ratio(&state.db, id).await?;
+    let quality_analysis = quality_scorer::analyze_documentation_quality(&stream_row.file_path);
 
-    // 5. COMPUTE ACCUMULATED (The heart of DocuDrip's engine)
     let base_rate_f64 = pool_row.base_rate.to_string().parse::<f64>().unwrap_or(0.0);
-    
+
     let computed_f64 = calculator::calculate_accumulated(
         stream_row.character_count,
         base_rate_f64,
-        locale_multiplier,
+        &stream_row.locale,
         approval_ratio,
+        quality_analysis.quality_score,
         stream_row.created_at,
         Utc::now(),
     );
 
-    // Convert computed value back to Decimal for precise financial presentation
     let computed_decimal = Decimal::from_f64(computed_f64).unwrap_or(Decimal::ZERO);
-
-    // The total accumulated is what was already snapshotted/claimed (in DB) + the newly computed pending portion.
-    // For V1 (where streams just accumulate forever until payout phase), accumulated in DB is 0.
     let total_accumulated = stream_row.accumulated + computed_decimal;
 
-    let response = StreamResponse {
-        id: stream_row.id,
-        pool_id: stream_row.pool_id,
-        author_id: stream_row.author_id,
-        pr_number: stream_row.pr_number,
-        file_path: stream_row.file_path,
-        character_count: stream_row.character_count,
-        locale: stream_row.locale,
-        accumulated: total_accumulated,
-        approval_ratio,
-        status: stream_row.status,
-    };
-
-    Ok(Json(response))
+    Ok(Json(serde_json::json!({
+        "id": stream_row.id,
+        "pool_id": stream_row.pool_id,
+        "author_id": stream_row.author_id,
+        "pr_number": stream_row.pr_number,
+        "file_path": stream_row.file_path,
+        "character_count": stream_row.character_count,
+        "locale": stream_row.locale,
+        "accumulated": total_accumulated,
+        "approval_ratio": approval_ratio,
+        "quality_multiplier": quality_analysis.quality_score,
+        "status": stream_row.status,
+        "created_at": stream_row.created_at,
+    })))
 }
 
-/// Anonymous voting endpoint for the embeddable widget.
-async fn vote(
+/// Vote submission handler with real IP extraction & anti-sybil fingerprinting (#5.3)
+async fn vote_stream(
     State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    Path(stream_id): Path<Uuid>,
+    headers: HeaderMap,
     Json(payload): Json<VoteRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    // 1. Ensure stream exists
-    let _ = streams::get_stream_by_id(&state.db, id)
-        .await?
-        .ok_or(AppError::NotFound)?;
+    let voter_ip = payload
+        .voter_ip
+        .unwrap_or_else(|| ip_extractor::extract_client_ip(&headers, None));
 
-    // 2. Prevent duplicate votes (if IP provided)
-    if let Some(ip) = &payload.voter_ip {
-        if votes::check_duplicate(&state.db, id, ip).await? {
-            return Err(AppError::Conflict("Already voted".into()));
-        }
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    let registered = votes::record_vote(
+        &state.db,
+        stream_id,
+        &voter_ip,
+        payload.is_upvote,
+        payload.fingerprint_hash.as_deref(),
+        user_agent.as_deref(),
+    )
+    .await?;
+
+    if !registered {
+        return Err(AppError::Conflict("Duplicate vote detected".into()));
     }
 
-    // 3. Record vote
-    votes::record_vote(&state.db, id, payload.voter_ip.as_deref(), payload.is_upvote).await?;
-
-    Ok(StatusCode::CREATED)
+    Ok(StatusCode::OK)
 }

@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::error::AppError;
 
-#[derive(Debug)]
+#[derive(Debug, FromRow)]
 pub struct StreamRow {
     pub id: Uuid,
     pub pool_id: Uuid,
@@ -15,6 +15,23 @@ pub struct StreamRow {
     pub character_count: i32,
     pub locale: String,
     pub accumulated: Decimal,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, FromRow)]
+pub struct ActiveStreamRow {
+    pub id: Uuid,
+    pub pool_id: Uuid,
+    pub author_id: Uuid,
+    pub author_username: String,
+    pub pool_repo_name: String,
+    pub pr_number: Option<i32>,
+    pub file_path: String,
+    pub character_count: i32,
+    pub locale: String,
+    pub accumulated: Decimal,
+    pub base_rate: Decimal,
     pub status: String,
     pub created_at: DateTime<Utc>,
 }
@@ -69,19 +86,21 @@ pub async fn find_active_pool_for_repo(
     Ok(result.map(|r| r.id))
 }
 
-pub async fn list_streams_by_pool(
-    pool: &PgPool,
-    pool_id: Uuid,
-) -> Result<Vec<StreamRow>, AppError> {
-    let result = sqlx::query_as!(
-        StreamRow,
+pub async fn list_active_streams(pool: &PgPool) -> Result<Vec<ActiveStreamRow>, AppError> {
+    let result = sqlx::query_as::<_, ActiveStreamRow>(
         r#"
-        SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, status, created_at
-        FROM streams
-        WHERE pool_id = $1
-        ORDER BY created_at DESC
-        "#,
-        pool_id
+        SELECT 
+            s.id, s.pool_id, s.author_id, 
+            u.username as author_username,
+            p.repo_full_name as pool_repo_name,
+            s.pr_number, s.file_path, s.character_count, s.locale, s.accumulated, 
+            p.base_rate, s.status, s.created_at
+        FROM streams s
+        JOIN users u ON s.author_id = u.id
+        JOIN pools p ON s.pool_id = p.id
+        WHERE s.status = 'active'
+        ORDER BY s.created_at DESC
+        "#
     )
     .fetch_all(pool)
     .await?;
@@ -89,16 +108,34 @@ pub async fn list_streams_by_pool(
     Ok(result)
 }
 
+pub async fn list_streams_by_pool(
+    pool: &PgPool,
+    pool_id: Uuid,
+) -> Result<Vec<StreamRow>, AppError> {
+    let result = sqlx::query_as::<_, StreamRow>(
+        r#"
+        SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, status, created_at
+        FROM streams
+        WHERE pool_id = $1
+        ORDER BY created_at DESC
+        "#
+    )
+    .bind(pool_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(result)
+}
+
 pub async fn get_stream_by_id(pool: &PgPool, id: Uuid) -> Result<Option<StreamRow>, AppError> {
-    let result = sqlx::query_as!(
-        StreamRow,
+    let result = sqlx::query_as::<_, StreamRow>(
         r#"
         SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, status, created_at
         FROM streams
         WHERE id = $1
-        "#,
-        id
+        "#
     )
+    .bind(id)
     .fetch_optional(pool)
     .await?;
 

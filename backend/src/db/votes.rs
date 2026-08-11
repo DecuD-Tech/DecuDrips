@@ -1,63 +1,49 @@
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::error::AppError;
 
-#[derive(Debug)]
+#[derive(Debug, FromRow)]
 pub struct VoteRow {
     pub id: Uuid,
     pub stream_id: Uuid,
     pub voter_ip: Option<String>,
     pub is_upvote: bool,
+    pub fingerprint_hash: Option<String>,
+    pub user_agent: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
+/// Record a vote with anti-sybil IP + browser fingerprinting (#1.6, #5.3)
 pub async fn record_vote(
     pool: &PgPool,
     stream_id: Uuid,
-    voter_ip: Option<&str>,
-    is_upvote: bool,
-) -> Result<(), AppError> {
-    sqlx::query!(
-        r#"
-        INSERT INTO votes (stream_id, voter_ip, is_upvote)
-        VALUES ($1, $2, $3)
-        "#,
-        stream_id,
-        voter_ip,
-        is_upvote
-    )
-    .execute(pool)
-    .await?;
-
-    Ok(())
-}
-
-/// Checks if a voter IP has already voted on this stream to prevent duplicate votes
-pub async fn check_duplicate(
-    pool: &PgPool,
-    stream_id: Uuid,
     voter_ip: &str,
+    is_upvote: bool,
+    fingerprint_hash: Option<&str>,
+    user_agent: Option<&str>,
 ) -> Result<bool, AppError> {
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
-        SELECT EXISTS(
-            SELECT 1 FROM votes 
-            WHERE stream_id = $1 AND voter_ip = $2
-        ) as "exists!"
+        INSERT INTO votes (stream_id, voter_ip, is_upvote, fingerprint_hash, user_agent)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT DO NOTHING
+        RETURNING id
         "#,
-        stream_id,
-        voter_ip
     )
-    .fetch_one(pool)
+    .bind(stream_id)
+    .bind(voter_ip)
+    .bind(is_upvote)
+    .bind(fingerprint_hash)
+    .bind(user_agent)
+    .fetch_optional(pool)
     .await?;
 
-    Ok(result.exists)
+    Ok(result.is_some())
 }
 
 /// Returns the approval ratio (upvotes / total_votes) as a float [0.0 - 1.0]
-/// Returns 1.0 if there are no votes (innocent until proven guilty)
 pub async fn get_approval_ratio(
     pool: &PgPool,
     stream_id: Uuid,
@@ -76,7 +62,7 @@ pub async fn get_approval_ratio(
     .await?;
 
     if result.total_votes == 0 {
-        return Ok(1.0); // Default perfect score
+        return Ok(1.0);
     }
 
     let upvotes = result.upvotes.unwrap_or(0);

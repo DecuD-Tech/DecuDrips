@@ -440,10 +440,18 @@ This document serves as the authoritative local technical specification for ever
 
 ---
 
-## 🚀 Phase 2 & Phase 3 Future Expansion Specifications
+## 🚀 Phase 2 & Phase 3 Expansion Specifications
+
+### Epic 8: AI Quality & Helpfulness Scoring (`[backend]` / `[ai]`)
+- [x] **#8.1** `[backend]` `[ai]` Build `engine/quality_scorer.rs` evaluating Markdown readability, code validity, and AI fluff
+- [x] **#8.2** `[backend]` `[ai]` Integrate dynamic quality score multiplier (`0.70x` – `1.30x`) into compute-on-read flow rate engine
+- [x] **#8.3** `[backend]` `[ai]` Implement targeted locale translation grant multipliers (`2.0x` boost for `es`, `pt`, `ja`, `hi`, `zh`, `de`)
 
 #### #8.1 Integrate Automated LLM Quality & Formatting Scorer (`[backend]`)
-* Evaluate merged documentation PR readability index and accuracy using lightweight LLM inference.
+* **Target File:** `backend/src/engine/quality_scorer.rs`
+* **Subsystem:** `backend` / `ai`
+* **Description:** Evaluates documentation prose quality, readability index, code snippet presence, and AI fluff detection.
+* **Acceptance Criteria:** Computes quality multiplier between 0.70x and 1.30x with unit test coverage.
 
 #### #8.2 Build GitLab and Codeberg Repository Webhook Drivers (`[backend]`)
 * Expand ingestion pipeline to process webhook events from self-hosted GitLab and Codeberg.
