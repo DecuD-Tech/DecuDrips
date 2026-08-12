@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -154,12 +157,21 @@ LazyDatabase _openConnection() {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'docudrip_encrypted.db'));
 
+    const storage = FlutterSecureStorage();
+    String? encryptionKey = await storage.read(key: 'db_encryption_key');
+    if (encryptionKey == null) {
+      final random = Random.secure();
+      final values = List<int>.generate(32, (i) => random.nextInt(256));
+      encryptionKey = base64Encode(values);
+      await storage.write(key: 'db_encryption_key', value: encryptionKey);
+    }
+
     // SQLCipher encrypted database connection opening (#7.3)
     return NativeDatabase.createInBackground(
       file,
       setup: (rawDb) {
         // Enforce PRAGMA key encryption via secure storage key
-        rawDb.execute("PRAGMA key = 'docudrip_secure_encryption_key';");
+        rawDb.execute("PRAGMA key = '$encryptionKey';");
       },
     );
   });

@@ -9,6 +9,12 @@ class SyncService {
 
   SyncService({required this.db, required this.apiBaseUrl});
 
+  /// Triggers full sync: fetches server data and processes queued offline actions
+  Future<void> syncAll() async {
+    await syncAllFromServer();
+    await processOfflineQueue();
+  }
+
   /// Periodically fetch pools, streams, and claims from Axum API (#7.4)
   Future<void> syncAllFromServer() async {
     try {

@@ -15,6 +15,7 @@ pub struct StreamRow {
     pub character_count: i32,
     pub locale: String,
     pub accumulated: Decimal,
+    pub content_snapshot: Option<String>,
     pub status: String,
     pub created_at: DateTime<Utc>,
 }
@@ -31,6 +32,7 @@ pub struct ActiveStreamRow {
     pub character_count: i32,
     pub locale: String,
     pub accumulated: Decimal,
+    pub content_snapshot: Option<String>,
     pub base_rate: Decimal,
     pub status: String,
     pub created_at: DateTime<Utc>,
@@ -94,7 +96,7 @@ pub async fn list_active_streams(pool: &PgPool) -> Result<Vec<ActiveStreamRow>, 
             u.username as author_username,
             p.repo_full_name as pool_repo_name,
             s.pr_number, s.file_path, s.character_count, s.locale, s.accumulated, 
-            p.base_rate, s.status, s.created_at
+            s.content_snapshot, p.base_rate, s.status, s.created_at
         FROM streams s
         JOIN users u ON s.author_id = u.id
         JOIN pools p ON s.pool_id = p.id
@@ -114,7 +116,7 @@ pub async fn list_streams_by_pool(
 ) -> Result<Vec<StreamRow>, AppError> {
     let result = sqlx::query_as::<_, StreamRow>(
         r#"
-        SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, status, created_at
+        SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, content_snapshot, status, created_at
         FROM streams
         WHERE pool_id = $1
         ORDER BY created_at DESC
@@ -130,7 +132,7 @@ pub async fn list_streams_by_pool(
 pub async fn get_stream_by_id(pool: &PgPool, id: Uuid) -> Result<Option<StreamRow>, AppError> {
     let result = sqlx::query_as::<_, StreamRow>(
         r#"
-        SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, status, created_at
+        SELECT id, pool_id, author_id, pr_number, file_path, character_count, locale, accumulated, content_snapshot, status, created_at
         FROM streams
         WHERE id = $1
         "#

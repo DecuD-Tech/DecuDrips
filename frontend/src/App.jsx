@@ -148,7 +148,7 @@ function DashboardShell() {
             <div className="stat-info">
               <span className="stat-label">Total Reward Pools</span>
               <span className="stat-value">
-                ${statsLoading ? '...' : (stats?.total_pools_funding || 0).toLocaleString()} <span className="currency">USDC</span>
+                ${statsLoading ? '...' : (parseFloat(stats?.total_funding_usdc || '0')).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="currency">USDC</span>
               </span>
             </div>
           </div>
@@ -157,7 +157,7 @@ function DashboardShell() {
             <div className="stat-info">
               <span className="stat-label">Total Dripped</span>
               <span className="stat-value">
-                ${statsLoading ? '...' : (parseFloat(stats?.total_dripped || '0')).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="currency">USDC</span>
+                ${statsLoading ? '...' : (parseFloat(stats?.total_dripped_usdc || '0')).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="currency">USDC</span>
               </span>
             </div>
           </div>
@@ -170,8 +170,8 @@ function DashboardShell() {
           </div>
           <div className="stat-card">
             <div className="stat-info">
-              <span className="stat-label">Avg Helpfulness</span>
-              <span className="stat-value">{statsLoading ? '...' : `${(stats?.average_helpfulness_rating || 0).toFixed(1)}%`}</span>
+              <span className="stat-label">Active Pools</span>
+              <span className="stat-value">{statsLoading ? '...' : stats?.total_pools_active || 0}</span>
             </div>
             <div className="stat-icon purple"><ThumbsUp size={20} strokeWidth={1.5} /></div>
           </div>

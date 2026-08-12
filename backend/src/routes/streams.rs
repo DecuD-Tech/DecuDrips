@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::auth::middleware::OptionalAuth;
-use crate::db::{locale, pools, streams, votes};
+use crate::db::{locale, nonces, pools, streams, votes};
 use crate::engine::{calculator, quality_scorer};
 use crate::error::AppError;
 use crate::middleware::ip_extractor;
@@ -42,8 +42,10 @@ async fn list_streams(
 
         let approval_ratio = votes::get_approval_ratio(&state.db, row.id).await?;
 
-        // Compute dynamic quality score & accumulated rewards (#8.1, #8.2, #8.3)
-        let quality_analysis = quality_scorer::analyze_documentation_quality(&row.file_path);
+        // FIX-01: Pass actual document content to quality scorer, not the file path
+        let quality_analysis = quality_scorer::analyze_documentation_quality(
+            row.content_snapshot.as_deref().unwrap_or("")
+        );
         let base_rate_f64 = row.base_rate.to_string().parse::<f64>().unwrap_or(0.0);
         let computed_f64 = calculator::calculate_accumulated(
             row.character_count,
@@ -107,6 +109,7 @@ struct VoteRequest {
     is_upvote: bool,
     fingerprint_hash: Option<String>,
     voter_ip: Option<String>,
+    nonce: Option<String>, // FIX-03: Single-use nonce for anti-sybil validation
 }
 
 /// Compute-on-read stream detail fetcher.
@@ -124,7 +127,11 @@ async fn get_stream(
         .ok_or(AppError::NotFound)?;
 
     let approval_ratio = votes::get_approval_ratio(&state.db, id).await?;
-    let quality_analysis = quality_scorer::analyze_documentation_quality(&stream_row.file_path);
+
+    // FIX-01: Pass actual document content to quality scorer, not the file path
+    let quality_analysis = quality_scorer::analyze_documentation_quality(
+        stream_row.content_snapshot.as_deref().unwrap_or("")
+    );
 
     let base_rate_f64 = pool_row.base_rate.to_string().parse::<f64>().unwrap_or(0.0);
 
@@ -157,13 +164,22 @@ async fn get_stream(
     })))
 }
 
-/// Vote submission handler with real IP extraction & anti-sybil fingerprinting (#5.3)
+/// Vote submission handler with real IP extraction, anti-sybil fingerprinting (#5.3),
+/// and single-use nonce validation (FIX-03)
 async fn vote_stream(
     State(state): State<AppState>,
     Path(stream_id): Path<Uuid>,
     headers: HeaderMap,
     Json(payload): Json<VoteRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    // FIX-03: Validate single-use nonce before accepting vote
+    if let Some(ref nonce_value) = payload.nonce {
+        let valid = nonces::validate_and_consume_nonce(&state.db, stream_id, nonce_value).await?;
+        if !valid {
+            return Err(AppError::BadRequest("Invalid or expired nonce".into()));
+        }
+    }
+
     let voter_ip = payload
         .voter_ip
         .unwrap_or_else(|| ip_extractor::extract_client_ip(&headers, None));
