@@ -47,24 +47,28 @@ pub async fn create_stream(
     file_path: &str,
     character_count: i32,
     locale: &str,
+    content_snapshot: Option<&str>,
+    quality_multiplier: Option<f64>,
 ) -> Result<Uuid, AppError> {
-    let result = sqlx::query!(
+    let row: (Uuid,) = sqlx::query_as(
         r#"
-        INSERT INTO streams (pool_id, author_id, pr_number, file_path, character_count, locale)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO streams (pool_id, author_id, pr_number, file_path, character_count, locale, content_snapshot, quality_multiplier)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
         "#,
-        pool_id,
-        author_id,
-        pr_number,
-        file_path,
-        character_count,
-        locale,
     )
+    .bind(pool_id)
+    .bind(author_id)
+    .bind(pr_number)
+    .bind(file_path)
+    .bind(character_count)
+    .bind(locale)
+    .bind(content_snapshot)
+    .bind(quality_multiplier)
     .fetch_one(pool)
     .await?;
 
-    Ok(result.id)
+    Ok(row.0)
 }
 
 /// Finds the first active pool matching the repo full name.

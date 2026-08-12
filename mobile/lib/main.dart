@@ -95,7 +95,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           });
         },
         backgroundColor: const Color(0xFF0F172A),
-        indicatorColor: const Color(0xFF6366F1).withOpacity(0.2),
+        indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.account_balance_wallet_outlined),
@@ -212,8 +212,8 @@ class PoolsScreen extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: pool.status.toLowerCase() == 'active'
-                                  ? Colors.green.withOpacity(0.2)
-                                  : Colors.orange.withOpacity(0.2),
+                                  ? Colors.green.withValues(alpha: 0.2)
+                                  : Colors.orange.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -373,8 +373,8 @@ class StreamsScreen extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: stream.status.toLowerCase() == 'active'
-                                  ? Colors.green.withOpacity(0.2)
-                                  : Colors.blue.withOpacity(0.2),
+                                  ? Colors.green.withValues(alpha: 0.2)
+                                  : Colors.blue.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -528,7 +528,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.2),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -610,7 +610,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ElevatedButton.icon(
               onPressed: _handleLogout,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.withOpacity(0.15),
+                backgroundColor: Colors.redAccent.withValues(alpha: 0.15),
                 foregroundColor: Colors.redAccent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wallet, DollarSign, CheckCircle2, AlertCircle, ArrowUpRight } from 'lucide-react';
+import { Wallet, DollarSign, AlertCircle, ArrowUpRight } from 'lucide-react';
 import { api } from '../lib/api';
 import { useClaimStore } from '../stores/claimStore';
 
 export default function ClaimPage() {
   const queryClient = useQueryClient();
   const { selectedStreamId, setSelectedStreamId, claimAmount, setClaimAmount } = useClaimStore();
+  const [selectedSettlementId, setSelectedSettlementId] = useState('');
   const [submitError, setSubmitError] = useState(null);
 
   // Fetch active streams to claim from
@@ -53,10 +54,18 @@ export default function ClaimPage() {
       setSubmitError('Minimum claim threshold is $1.00 USDC');
       return;
     }
+
+    // Determine target settlement account ID
+    const targetAccountId = selectedSettlementId || accounts?.[0]?.id;
+    if (!targetAccountId) {
+      setSubmitError('Please select or register a settlement account first');
+      return;
+    }
+
     claimMutation.mutate({
       stream_id: selectedStreamId,
       amount: val,
-      settlement_id: accounts?.[0]?.id || null,
+      settlement_id: targetAccountId,
     });
   };
 
@@ -95,6 +104,22 @@ export default function ClaimPage() {
                 {streams?.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.file_path} (${parseFloat(s.accumulated || 0).toFixed(4)} USDC)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--clr-text-muted)' }}>Settlement Destination Account (FIX-08)</label>
+              <select
+                value={selectedSettlementId || accounts?.[0]?.id || ''}
+                onChange={(e) => setSelectedSettlementId(e.target.value)}
+                style={{ width: '100%', padding: '0.75rem', background: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#fff' }}
+              >
+                {accounts?.length === 0 && <option value="">No settlement account linked</option>}
+                {accounts?.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.account_type.toUpperCase()} ({acc.account_identifier})
                   </option>
                 ))}
               </select>

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 import '../db/database.dart';
 
@@ -15,6 +16,13 @@ class SyncService {
     await processOfflineQueue();
   }
 
+  /// Helper to safely convert JSON values (String/num/null) to double (FIX-06)
+  double _parseDouble(dynamic val, [double fallback = 0.0]) {
+    if (val == null) return fallback;
+    if (val is num) return val.toDouble();
+    return double.tryParse(val.toString()) ?? fallback;
+  }
+
   /// Periodically fetch pools, streams, and claims from Axum API (#7.4)
   Future<void> syncAllFromServer() async {
     try {
@@ -23,11 +31,11 @@ class SyncService {
         final List<dynamic> list = jsonDecode(poolsResp.body);
         final pools = list.map((json) => PoolsTableData(
           id: json['id'],
-          repoFullName: json['repo_full_name'],
-          fundingAmount: (json['funding_amount'] as num).toDouble(),
-          baseRate: (json['base_rate'] as num).toDouble(),
-          totalDripped: (json['total_dripped'] as num).toDouble(),
-          status: json['status'],
+          repoFullName: json['repo_full_name'] ?? 'unknown/repo',
+          fundingAmount: _parseDouble(json['funding_amount'] ?? json['funding_amount_usdc']),
+          baseRate: _parseDouble(json['base_rate']),
+          totalDripped: _parseDouble(json['total_dripped'] ?? json['total_dripped_usdc']),
+          status: json['status'] ?? 'active',
         )).toList();
         await db.syncPools(pools);
       }
@@ -38,15 +46,15 @@ class SyncService {
         final streams = list.map((json) => StreamsTableData(
           id: json['id'],
           poolId: json['pool_id'],
-          authorUsername: json['author_id'] ?? 'contributor',
-          filePath: json['file_path'],
-          characterCount: json['character_count'],
-          locale: json['locale'],
-          accumulated: (json['accumulated'] as num).toDouble(),
-          flowRatePerSecond: (json['flow_rate_per_second'] as num? ?? 0.0).toDouble(),
-          approvalRatio: (json['approval_ratio'] as num? ?? 1.0).toDouble(),
-          status: json['status'],
-          createdAt: DateTime.parse(json['created_at']),
+          authorUsername: json['author_username'] ?? json['author_id'] ?? 'contributor',
+          filePath: json['file_path'] ?? '',
+          characterCount: (json['character_count'] as num? ?? 0).toInt(),
+          locale: json['locale'] ?? 'en',
+          accumulated: _parseDouble(json['accumulated']),
+          flowRatePerSecond: _parseDouble(json['flow_rate_per_second']),
+          approvalRatio: _parseDouble(json['approval_ratio'], 1.0),
+          status: json['status'] ?? 'active',
+          createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
         )).toList();
         await db.syncStreams(streams);
       }

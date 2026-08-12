@@ -254,6 +254,9 @@ async fn process_merged_pr(
                 character_count
             );
 
+            let patch_text = file.patch.as_deref().unwrap_or("");
+            let quality_analysis = crate::engine::quality_scorer::analyze_documentation_quality(patch_text);
+
             streams::create_stream(
                 &state.db,
                 pool_id,
@@ -262,6 +265,8 @@ async fn process_merged_pr(
                 &file.filename,
                 character_count,
                 locale,
+                Some(patch_text),
+                Some(quality_analysis.quality_score),
             )
             .await?;
         }

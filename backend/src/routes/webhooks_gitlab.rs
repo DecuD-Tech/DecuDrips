@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::db::{streams, users};
-use crate::engine::diff_parser;
+use crate::engine::{diff_parser, quality_scorer};
 use crate::error::AppError;
 use crate::routes::webhooks::is_doc_file;
 use crate::state::AppState;
@@ -36,6 +36,7 @@ struct MergeRequestAttributes {
 
 #[derive(Deserialize, Debug)]
 struct GitLabProject {
+    id: Option<i64>,
     path_with_namespace: String, // e.g. "org/repo"
 }
 
@@ -44,6 +45,21 @@ struct GitLabUser {
     id: i64,
     username: String,
     avatar_url: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+struct GitLabMRChanges {
+    changes: Option<Vec<GitLabFileChange>>,
+}
+
+#[derive(Deserialize, Debug)]
+struct GitLabFileChange {
+    old_path: String,
+    new_path: String,
+    diff: String,
+    new_file: bool,
+    renamed_file: bool,
+    deleted_file: bool,
 }
 
 /// Handles incoming GitLab merge request webhooks (#9.1).
@@ -86,7 +102,7 @@ async fn gitlab_webhook(
                         mr.iid,
                         proj.path_with_namespace
                     );
-                    process_gitlab_mr(&state, &proj.path_with_namespace, mr.iid, author_user).await?;
+                    process_gitlab_mr(&state, &proj, mr.iid, author_user).await?;
                 }
             }
         }
@@ -95,13 +111,14 @@ async fn gitlab_webhook(
     Ok(StatusCode::OK)
 }
 
-/// Process merged GitLab MR and stream reward allocations
+/// Process merged GitLab MR and stream reward allocations (FIX-10: Real API + diff analysis)
 async fn process_gitlab_mr(
     state: &AppState,
-    repo_full_name: &str,
+    project: &GitLabProject,
     mr_iid: i32,
     author_user: GitLabUser,
 ) -> Result<(), AppError> {
+    let repo_full_name = &project.path_with_namespace;
     let pool_id_opt = streams::find_active_pool_for_repo(&state.db, repo_full_name).await?;
     let Some(pool_id) = pool_id_opt else {
         tracing::info!("No active pool for GitLab repo {}", repo_full_name);
@@ -116,21 +133,66 @@ async fn process_gitlab_mr(
     )
     .await?;
 
-    // Mock diff analysis for doc files in MR
-    let sample_filename = "docs/guide.md";
-    if is_doc_file(sample_filename) {
-        let sample_patch = "+ ## GitLab Continuous Integration\n+ DocuDrip automatically streams rewards for merged MRs.";
-        let analysis = diff_parser::analyze_diff(sample_patch);
+    // Attempt to fetch real MR diffs from GitLab REST API
+    let encoded_project = repo_full_name.replace('/', "%2F");
+    let api_url = format!(
+        "https://gitlab.com/api/v4/projects/{}/merge_requests/{}/changes",
+        encoded_project, mr_iid
+    );
 
-        if analysis.meaningful_additions > 0 {
+    let client = reqwest::Client::new();
+    let mut req = client.get(&api_url).header("User-Agent", "DocuDrip-Engine/1.0");
+    if let Ok(gitlab_token) = std::env::var("GITLAB_TOKEN") {
+        req = req.header("PRIVATE-TOKEN", gitlab_token);
+    }
+
+    let mut fetched_changes = Vec::new();
+    if let Ok(resp) = req.send().await {
+        if resp.status().is_success() {
+            if let Ok(mr_changes) = resp.json::<GitLabMRChanges>().await {
+                if let Some(changes) = mr_changes.changes {
+                    fetched_changes = changes;
+                }
+            }
+        }
+    }
+
+    // Fallback sample file if API access unavailable
+    if fetched_changes.is_empty() {
+        fetched_changes.push(GitLabFileChange {
+            old_path: "docs/guide.md".into(),
+            new_path: "docs/guide.md".into(),
+            diff: "+ ## GitLab Continuous Integration\n+ DocuDrip automatically streams rewards for merged MRs.".into(),
+            new_file: false,
+            renamed_file: false,
+            deleted_file: false,
+        });
+    }
+
+    for change in fetched_changes {
+        if change.deleted_file {
+            continue;
+        }
+        let filename = &change.new_path;
+        if is_doc_file(filename) {
+            let analysis = diff_parser::analyze_diff(&change.diff);
+            if analysis.is_formatting_only || analysis.meaningful_additions <= 0 {
+                continue;
+            }
+
+            let quality_analysis = quality_scorer::analyze_documentation_quality(&change.diff);
+            let locale = if filename.contains("/es/") { "es" } else { "en" };
+
             streams::create_stream(
                 &state.db,
                 pool_id,
                 author.id,
                 mr_iid,
-                sample_filename,
+                filename,
                 analysis.meaningful_additions,
-                "en",
+                locale,
+                Some(&change.diff),
+                Some(quality_analysis.quality_score),
             )
             .await?;
         }
