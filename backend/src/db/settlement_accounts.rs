@@ -54,6 +54,20 @@ pub async fn list_settlement_accounts_by_user(
     Ok(accounts)
 }
 
+pub async fn get_settlement_account_by_id(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<SettlementAccount>, AppError> {
+    let account = sqlx::query_as::<_, SettlementAccount>(
+        "SELECT * FROM settlement_accounts WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(account)
+}
+
 pub async fn delete_settlement_account(
     pool: &PgPool,
     id: Uuid,

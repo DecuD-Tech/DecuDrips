@@ -35,7 +35,10 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Database migrations applied");
 
     // Build shared application state
-    let state = AppState::new(config.clone(), db);
+    let state = AppState::new(config.clone(), db.clone());
+
+    // Spawn background settlement worker daemon (#4.1, FIX-14)
+    tokio::spawn(docudrip_server::services::settlement_worker::start_settlement_worker(db.clone()));
 
     // Build the Axum router
     let app = routes::build_router(state);

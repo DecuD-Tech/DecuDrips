@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 pub mod stripe_adapter;
 pub mod crypto_adapter;
+pub mod opencollective_adapter;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettlementRequest {

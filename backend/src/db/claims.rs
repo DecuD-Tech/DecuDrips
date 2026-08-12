@@ -63,6 +63,17 @@ pub async fn list_claims_by_user(pool: &PgPool, user_id: Uuid) -> Result<Vec<Cla
     Ok(claims)
 }
 
+pub async fn list_pending_claims(pool: &PgPool, limit: i64) -> Result<Vec<Claim>, AppError> {
+    let claims = sqlx::query_as::<_, Claim>(
+        "SELECT * FROM claims WHERE status = 'pending' ORDER BY claimed_at ASC LIMIT $1",
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(claims)
+}
+
 pub async fn update_claim_status(
     pool: &PgPool,
     id: Uuid,
