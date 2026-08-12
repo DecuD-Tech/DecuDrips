@@ -459,8 +459,6 @@ This document serves as the authoritative local technical specification for ever
 - [x] **#9.3** `[widget]` `[plugin]` Package native `@docudrip/docusaurus-plugin` for Docusaurus docs sites
 - [x] **#9.4** `[widget]` `[plugin]` Package native `@docudrip/starlight-astro` integration component for Astro Starlight docs sites
 
-#### #8.4 Build Corporate Match-Funding Pool Engine (`[backend]`)
-* Enable 1:1 corporate matching funds for open-source documentation grants.
-
-#### #8.5 Build Open Documentation Health Telemetry GraphQL/REST API (`[backend]`)
-* Expose public telemetry endpoints displaying documentation coverage and funding flows across open-source ecosystems.
+### Epic 10: Enterprise & Community Growth (`[enterprise]`)
+- [x] **#10.1** `[backend]` `[settlement]` Build Corporate Match-Funding Pool Engine (`pools.rs`)
+- [x] **#10.2** `[backend]` `[telemetry]` Build Open Documentation Health Telemetry REST API (`GET /api/v1/stats/health-index`)
