@@ -1,0 +1,13 @@
+---
+export interface Props {
+  streamId: string;
+  backendUrl?: string;
+}
+
+const { streamId, backendUrl = 'https://api.docudrip.org/api/v1' } = Astro.props;
+const scriptSrc = `${backendUrl.replace('/api/v1', '')}/widget.js`;
+---
+
+<script is:inline src={scriptSrc} data-backend-url={backendUrl}></script>
+
+<docudrip-widget data-stream={streamId}></docudrip-widget>

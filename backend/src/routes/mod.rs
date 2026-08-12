@@ -20,6 +20,8 @@ pub mod stats;
 pub mod streams;
 pub mod users;
 pub mod webhooks;
+pub mod webhooks_codeberg;
+pub mod webhooks_gitlab;
 pub mod widget;
 
 /// Build the complete Axum router with all route groups and middleware.
@@ -50,6 +52,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/health", get(health_check))
         .nest("/auth", auth::router())
         .nest("/webhooks", webhooks::router())
+        .nest("/webhooks/gitlab", webhooks_gitlab::router())
+        .nest("/webhooks/codeberg", webhooks_codeberg::router())
         .nest("/users", users::router())
         .nest("/pools", pools::router())
         .nest("/streams", streams::router())

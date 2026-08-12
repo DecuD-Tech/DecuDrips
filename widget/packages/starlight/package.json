@@ -1,0 +1,9 @@
+{
+  "name": "@docudrip/starlight-astro",
+  "version": "1.0.0",
+  "description": "Official Starlight Astro integration component for DocuDrip continuous micro-funding widget",
+  "main": "index.js",
+  "keywords": ["astro", "starlight", "docudrip", "documentation", "funding"],
+  "author": "DecuD-Tech",
+  "license": "MIT"
+}

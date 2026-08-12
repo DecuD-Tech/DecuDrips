@@ -451,11 +451,11 @@ This document serves as the authoritative local technical specification for ever
 * **Description:** Evaluates documentation prose quality, readability index, code snippet presence, and AI fluff detection.
 * **Acceptance Criteria:** Computes quality multiplier between 0.70x and 1.30x with unit test coverage.
 
-#### #8.2 Build GitLab and Codeberg Repository Webhook Drivers (`[backend]`)
-* Expand ingestion pipeline to process webhook events from self-hosted GitLab and Codeberg.
-
-#### #8.3 Package Native `@docudrip/docusaurus-plugin` and Starlight Astro Integrations (`[widget]`)
-* Release framework-native npm packages for automated widget injection on Docusaurus and Astro Starlight sites.
+### Epic 9: Multi-Platform Ingestion Drivers & Framework Plugins (`[integrations]`)
+- [x] **#9.1** `[backend]` `[webhook]` Build GitLab Merge Request webhook ingestion driver (`webhooks_gitlab.rs`)
+- [x] **#9.2** `[backend]` `[webhook]` Build Codeberg / Forgejo pull request webhook ingestion driver (`webhooks_codeberg.rs`)
+- [x] **#9.3** `[widget]` `[plugin]` Package native `@docudrip/docusaurus-plugin` for Docusaurus docs sites
+- [x] **#9.4** `[widget]` `[plugin]` Package native `@docudrip/starlight-astro` integration component for Astro Starlight docs sites
 
 #### #8.4 Build Corporate Match-Funding Pool Engine (`[backend]`)
 * Enable 1:1 corporate matching funds for open-source documentation grants.

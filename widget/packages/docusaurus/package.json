@@ -1,0 +1,9 @@
+{
+  "name": "@docudrip/docusaurus-plugin",
+  "version": "1.0.0",
+  "description": "Official Docusaurus plugin for automated DocuDrip continuous micro-funding widget injection",
+  "main": "index.js",
+  "keywords": ["docusaurus", "docusaurus-plugin", "docudrip", "documentation", "funding"],
+  "author": "DecuD-Tech",
+  "license": "MIT"
+}
