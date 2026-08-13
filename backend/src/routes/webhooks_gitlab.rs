@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::db::{streams, users};
-use crate::engine::{diff_parser, quality_scorer};
+use crate::engine::{diff_parser, locale_boost, quality_scorer};
 use crate::error::AppError;
 use crate::routes::webhooks::is_doc_file;
 use crate::state::AppState;
@@ -181,7 +181,8 @@ async fn process_gitlab_mr(
             }
 
             let quality_analysis = quality_scorer::analyze_documentation_quality(&change.diff);
-            let locale = if filename.contains("/es/") { "es" } else { "en" };
+            let (locale_boost, locale) = locale_boost::detect_locale_multiplier(filename);
+            let final_multiplier = quality_analysis.quality_score * locale_boost;
 
             streams::create_stream(
                 &state.db,
@@ -190,9 +191,10 @@ async fn process_gitlab_mr(
                 mr_iid,
                 filename,
                 analysis.meaningful_additions,
-                locale,
+                &locale,
                 Some(&change.diff),
-                Some(quality_analysis.quality_score),
+                Some(final_multiplier),
+                Some(locale_boost),
             )
             .await?;
         }

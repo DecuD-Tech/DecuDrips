@@ -12,7 +12,7 @@ use serde_json::Value;
 use sha2::Sha256;
 
 use crate::db::{streams, users};
-use crate::engine::{diff_parser, quality_scorer};
+use crate::engine::{diff_parser, locale_boost, quality_scorer};
 use crate::error::AppError;
 use crate::routes::webhooks::is_doc_file;
 use crate::state::AppState;
@@ -181,7 +181,8 @@ async fn process_codeberg_pr(
             }
 
             let quality_analysis = quality_scorer::analyze_documentation_quality(patch_text);
-            let locale = if file.filename.contains("/es/") { "es" } else { "en" };
+            let (locale_boost, locale) = locale_boost::detect_locale_multiplier(&file.filename);
+            let final_multiplier = quality_analysis.quality_score * locale_boost;
 
             streams::create_stream(
                 &state.db,
@@ -190,9 +191,10 @@ async fn process_codeberg_pr(
                 pr.number,
                 &file.filename,
                 additions,
-                locale,
+                &locale,
                 Some(patch_text),
-                Some(quality_analysis.quality_score),
+                Some(final_multiplier),
+                Some(locale_boost),
             )
             .await?;
         }

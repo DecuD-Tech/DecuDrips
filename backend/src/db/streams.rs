@@ -16,6 +16,8 @@ pub struct StreamRow {
     pub locale: String,
     pub accumulated: Decimal,
     pub content_snapshot: Option<String>,
+    pub quality_multiplier: Option<f64>,
+    pub locale_boost: Option<f64>,
     pub status: String,
     pub created_at: DateTime<Utc>,
 }
@@ -33,6 +35,8 @@ pub struct ActiveStreamRow {
     pub locale: String,
     pub accumulated: Decimal,
     pub content_snapshot: Option<String>,
+    pub quality_multiplier: Option<f64>,
+    pub locale_boost: Option<f64>,
     pub base_rate: Decimal,
     pub status: String,
     pub created_at: DateTime<Utc>,
@@ -49,11 +53,12 @@ pub async fn create_stream(
     locale: &str,
     content_snapshot: Option<&str>,
     quality_multiplier: Option<f64>,
+    locale_boost: Option<f64>,
 ) -> Result<Uuid, AppError> {
     let row: (Uuid,) = sqlx::query_as(
         r#"
-        INSERT INTO streams (pool_id, author_id, pr_number, file_path, character_count, locale, content_snapshot, quality_multiplier)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO streams (pool_id, author_id, pr_number, file_path, character_count, locale, content_snapshot, quality_multiplier, locale_boost)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id
         "#,
     )
@@ -65,6 +70,7 @@ pub async fn create_stream(
     .bind(locale)
     .bind(content_snapshot)
     .bind(quality_multiplier)
+    .bind(locale_boost)
     .fetch_one(pool)
     .await?;
 
