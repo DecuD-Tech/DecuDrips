@@ -444,8 +444,8 @@ This document serves as the authoritative local technical specification for ever
 
 ### Sprint 4: Advanced AI Quality Scorer & Localization Engine (`[backend]`)
 
-- [ ] **#4.1** `[backend]` `[ai]` Upgrade Quality Scorer with Flesch-Kincaid & Entropy-Based Fluff Detection
-- [ ] **#4.2** `[backend]` `[database]` `[webhook]` Implement Locale-Aware Translation Multiplier Engine & Migration
+- [x] **#4.1** `[backend]` `[ai]` Upgrade Quality Scorer with Flesch-Kincaid & Entropy-Based Fluff Detection
+- [x] **#4.2** `[backend]` `[database]` `[webhook]` Implement Locale-Aware Translation Multiplier Engine & Migration
 
 #### #4.1 Upgrade Quality Scorer with Flesch-Kincaid & Entropy-Based Fluff Detection
 * **Target File:** `backend/src/engine/quality_scorer.rs`
