@@ -1,0 +1,131 @@
+What development work / improvements have you made since the repo was initially rejected?
+
+Since the initial rejection, DecuDrip has undergone a significant and structured development sprint
+covering the backend, frontend, and mobile subsystems. The work has been divided into three focused
+sprints, resulting in 16 concrete improvements that take the project from a partially-wired prototype
+to a production-capable micro-reward protocol.
+
+---
+
+SPRINT 1 — Critical Blockers & Core Wiring
+
+1. Fixed Quality Scorer Input (FIX-01)
+   The documentation quality scorer was receiving a file path string (e.g. "docs/guide.md") instead
+   of the actual file content, meaning every stream received an identical meaningless quality score.
+   We added a `content_snapshot` column to the streams table, storing real diff prose at webhook
+   ingestion time, and updated the scorer to receive actual Markdown content. Quality multipliers
+   (0.70x–1.30x) now reflect true documentation quality.
+
+2. Resolved Frontend Dashboard Stat Card Mismatches (FIX-02)
+   The React dashboard was referencing non-existent JSON property names from the backend API
+   (e.g. `total_pools_funding` instead of `total_funding_usdc`), causing every stat card to display
+   "$0 USDC" or NaN. All property references were aligned to match the exact Axum backend response
+   shape.
+
+3. Wired Nonce Validation into the Vote Endpoint (FIX-03)
+   The anti-sybil nonce challenge system (single-use tokens) was being generated but never validated
+   at the vote endpoint. Anyone could bypass the system and vote unlimited times. Nonce validation is
+   now enforced — votes without a valid nonce are rejected with a 400 error and consumed nonces
+   cannot be replayed.
+
+4. Added Missing Mobile Dependencies & Secured Encryption Key (FIX-04)
+   The Flutter mobile app was missing explicit `http` and `flutter_secure_storage` declarations in
+   pubspec.yaml. Additionally, the SQLCipher database encryption key was hardcoded in source. We
+   declared all required dependencies and implemented a secure key generation routine that creates a
+   random 256-bit key on first launch, stored exclusively in the device's secure storage.
+
+5. Created the Mobile App Entrypoint & Navigation Shell (FIX-05)
+   mobile/lib/main.dart did not exist, meaning `flutter run` failed immediately. We created the
+   full app entrypoint with Material 3 navigation, initialising the Drift database and SyncService
+   on launch. The app now boots to a working three-screen navigation shell (Pools, Streams, Settings).
+
+---
+
+SPRINT 2 — Integration Wiring & Data Fixes
+
+6. Fixed SyncService JSON Type Casting Crash (FIX-06)
+   Axum serialises Rust Decimal types as JSON strings (e.g. "150.00"), but the Flutter SyncService
+   was casting them as `num`, crashing on first sync with a TypeError. All decimal fields now use
+   double.tryParse() for safe string-to-number conversion.
+
+7. Added Audit Trail Resource Picker to Frontend (FIX-07)
+   The Audit Trail page was hardcoded to a null UUID, always showing "No audit events recorded." We
+   added a resource search and selector input, allowing maintainers to pick any pool or stream and
+   view its real audit history with timestamps, actor, and action type.
+
+8. Added Multi-Account Selector to Claim Page (FIX-08)
+   The claim submission page auto-selected the first settlement account with no UI for users who
+   have multiple payout destinations (e.g. both Stripe and a crypto wallet). A dropdown selector now
+   renders when multiple accounts exist, with the selected account ID sent in the claim payload.
+
+9. Persisted Quality Multiplier to Database (FIX-09)
+   Quality scores were computed in memory on every request but never stored. A `quality_multiplier`
+   column was added to the streams table so the exact multiplier active at the time of a claim can
+   be audited and replayed historically.
+
+10. GitLab Driver — Real MR Diff Fetching (FIX-10)
+    The GitLab webhook handler was hardcoded with a fake file path and fake patch string. It now
+    calls the GitLab REST API (GET /api/v4/projects/:id/merge_requests/:iid/changes) with the
+    project's access token, iterates real changed files, filters for documentation files, and
+    extracts actual diff content for quality scoring.
+
+11. Codeberg Driver — Real PR Diff Fetching (FIX-11)
+    Same issue as GitLab: the Codeberg webhook handler used a hardcoded fake patch. It now calls
+    the Gitea/Forgejo REST API (GET /api/v1/repos/:owner/:repo/pulls/:number/files) and processes
+    real diff content from Codeberg pull requests.
+
+---
+
+SPRINT 3 — Production Settlement & Telemetry
+
+12. Stripe Connect Real API Integration (FIX-12)
+    The Stripe settlement adapter was returning a hardcoded fake transfer ID and $0.25 fee with no
+    HTTP calls. It now calls POST https://api.stripe.com/v1/transfers using the configured
+    STRIPE_SECRET_KEY, creates real Stripe Transfer objects, records the actual fee from the API
+    response, and uses idempotency keys to prevent duplicate settlements.
+
+13. USDC Base L2 Real EVM Integration (FIX-13)
+    The crypto settlement adapter was returning a fake "0xbase_..." transaction hash and $0.01 fee.
+    It now submits a real USDC ERC-20 transfer() call to the contributor's wallet address on
+    Base L2 via EVM JSON-RPC, returning a verifiable on-chain transaction hash and real gas cost.
+
+14. Built the Claim Settlement Background Worker (FIX-14)
+    Claims were being created with status = 'pending' but there was no background process to
+    settle them — they would remain pending permanently. We created a Tokio background worker daemon
+    (settlement_worker.rs) that polls for pending claims every 30 seconds, routes each to the
+    appropriate settlement adapter (Stripe, crypto, or OpenCollective), updates claim status to
+    'settled' or 'failed', retries on failure with exponential backoff, and writes an audit log
+    entry for every settlement event. The worker is spawned alongside the Axum HTTP server on startup.
+
+15. OpenCollective Settlement Adapter (FIX-15)
+    The roadmap listed OpenCollective/LFX as a supported settlement provider, but the adapter did
+    not exist. We implemented the full SettlementAdapter trait for OpenCollective using their
+    GraphQL API, creating expense submissions against the project's collective and returning the
+    expense ID as the transaction reference.
+
+16. Dynamic Documentation Health Telemetry (FIX-16)
+    The /stats/health endpoint was returning a hardcoded health index of 94.8 and velocity of
+    142.5 regardless of actual system state. It now computes a real composite health index from
+    live database queries: freshness velocity (streams created in the last 24 hours) and community
+    approval rate (average upvote ratio across active streams), giving maintainers and funders an
+    accurate live signal of ecosystem health.
+
+---
+
+ADDITIONAL INFRASTRUCTURE
+
+17. Path-Filtered GitHub Actions CI Pipeline
+    We created a GitHub Actions CI workflow (.github/workflows/ci.yml) with intelligent path
+    filtering so checks are only triggered when relevant code changes:
+    - General checks (YAML lint, secret scanning) run on every push.
+    - Rust/backend checks only run when backend/ files change.
+    - React/frontend checks only run when frontend/ files change.
+    - Flutter/mobile checks only run when mobile/ files change.
+    This keeps CI fast and avoids unnecessary billable minutes for unrelated changes.
+
+---
+
+In summary, DecuDrip has moved from a scaffold with broken wiring and hardcoded mocks to a
+production-capable system with real platform integrations (GitHub, GitLab, Codeberg), a live
+settlement pipeline (Stripe, Base L2 USDC, OpenCollective), a functioning Flutter mobile app,
+and dynamic telemetry — all backed by a structured audit trail and CI infrastructure.

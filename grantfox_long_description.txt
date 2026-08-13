@@ -1,0 +1,70 @@
+DocuDrip — GrantFox Project Long Description
+=============================================
+
+Open source documentation is consistently the most underfunded part of any project.
+Engineers who write guides, fix broken examples, keep READMEs honest, and translate
+content for non-English communities rarely see any of the credit that flows to feature
+authors. DocuDrip is built around a straightforward observation: if you can measure a
+documentation contribution precisely, you can pay for it automatically.
+
+Here is how it works in practice. A maintainer creates a funding pool linked to their
+repository and sets a per-character base rate. When a pull request is merged that touches
+documentation files (.md, .mdx, .rst), a webhook fires, the diff is parsed, and a stream
+opens for the contributing author. From that moment, the stream accumulates based on
+character volume, locale multiplier (translations get a higher rate), and a community
+helpfulness score driven by reader votes. Contributors watch their balance on a live
+dashboard. When they are ready, they claim it.
+
+Payment is routed through a strategy-based adapter system that supports Stripe Connect
+for fiat payouts, USDC transfers on Base L2 for crypto-native contributors, and
+OpenCollective expense submissions for projects that already run their finances through
+a collective. Each adapter calls the real APIs. A background worker daemon polls for
+pending claims every 30 seconds, routes each one to the right adapter, and writes an
+audit log entry on settlement.
+
+Reader feedback feeds directly into contributor earnings. A lightweight Shadow DOM widget
+(under 5KB, style-isolated) can be embedded on any documentation site — Docusaurus,
+GitBook, or plain HTML — and lets readers vote on whether the content was helpful. That
+vote data drives a multiplier that scales payouts from 0.5x up to 1.5x. The multiplier
+is stored in the database at the time each stream is created, so historical payouts are
+auditable even if the score changes later.
+
+The platform currently supports GitHub, GitLab, and Codeberg webhooks. All three webhook
+drivers fetch real PR diffs from their respective APIs — no hardcoded stubs — and run
+them through a quality scorer that evaluates prose content, not file paths. Anti-sybil
+protections are in place: votes go through a single-use nonce challenge, IP rate-limiting
+is enforced, and the backend uses HMAC signature verification on all incoming webhook
+payloads.
+
+The stack is Rust on the backend (Axum, Tokio, SQLx, Postgres), React 19 with Zustand
+and TanStack Query on the frontend, and a Flutter companion app with Drift for
+offline-first pool and stream monitoring on mobile. GitHub Actions runs a path-filtered
+CI pipeline so backend checks only trigger on backend changes, frontend checks only
+trigger on frontend changes, and so on. The whole thing runs locally with a single
+docker compose up.
+
+What we are looking for from contributors:
+
+The open issues cover work at several levels of complexity. On the infrastructure side,
+there is the GitBook integration package, push notifications for the mobile app (using
+the existing Drift sync layer as the local state store), and an offline vote queue that
+lets maintainers action streams while disconnected and syncs on reconnect. On the
+protocol side, there is the dispute resolution system — a community arbitration flow
+for flagging low-quality merged PRs that got through automated checks — and a quality
+badge SVG that documentation sites can embed to show their current health index score.
+
+The settlement abstraction layer is designed to make adding new payment providers
+straightforward. The SettlementAdapter trait in Rust is small and well-defined, and
+existing adapters (Stripe, USDC, OpenCollective) serve as working reference implementations.
+If you have experience with a payment rail that is not yet supported — Lightning, Wise,
+Stellar-native assets — there is a clear place to plug it in.
+
+The codebase is documented, the architecture is written up in the README, and the
+local dev setup works without external dependencies beyond Docker for Postgres.
+If you have ever wanted to work on a project where documentation contributors actually
+get paid, this is a reasonable place to start.
+
+License: MIT
+Tech: Rust, React, Flutter, PostgreSQL, Drift
+Platforms: GitHub, GitLab, Codeberg
+Settlement: Stripe, USDC (Base L2), OpenCollective

@@ -438,25 +438,135 @@ This document serves as the authoritative local technical specification for ever
 
 ---
 
-## 🚀 Phase 2 & Phase 3 Expansion Specifications
+## 🚀 Phase 2: AI Intelligence, Ecosystem Integrations & Mobile Companion
 
-### Epic 8: AI Quality & Helpfulness Scoring (`[backend]` / `[ai]`)
-- [x] **#8.1** `[backend]` `[ai]` Build `engine/quality_scorer.rs` evaluating Markdown readability, code validity, and AI fluff
-- [x] **#8.2** `[backend]` `[ai]` Integrate dynamic quality score multiplier (`0.70x` – `1.30x`) into compute-on-read flow rate engine
-- [x] **#8.3** `[backend]` `[ai]` Implement targeted locale translation grant multipliers (`2.0x` boost for `es`, `pt`, `ja`, `hi`, `zh`, `de`)
+---
 
-#### #8.1 Integrate Automated LLM Quality & Formatting Scorer (`[backend]`)
+### Sprint 4: Advanced AI Quality Scorer & Localization Engine (`[backend]`)
+
+- [ ] **#4.1** `[backend]` `[ai]` Upgrade Quality Scorer with Flesch-Kincaid & Entropy-Based Fluff Detection
+- [ ] **#4.2** `[backend]` `[database]` `[webhook]` Implement Locale-Aware Translation Multiplier Engine & Migration
+
+#### #4.1 Upgrade Quality Scorer with Flesch-Kincaid & Entropy-Based Fluff Detection
 * **Target File:** `backend/src/engine/quality_scorer.rs`
 * **Subsystem:** `backend` / `ai`
-* **Description:** Evaluates documentation prose quality, readability index, code snippet presence, and AI fluff detection.
-* **Acceptance Criteria:** Computes quality multiplier between 0.70x and 1.30x with unit test coverage.
+* **Description:** Upgrade the documentation quality scorer with true Flesch-Kincaid Reading Ease, word entropy AI fluff detection, and document structure density rewards.
+* **Technical Requirements:**
+  - Implement inline syllable counter (`count_syllables`) to compute true Flesch-Kincaid Reading Ease.
+  - Add entropy-based AI fluff detection (`unique_words.len() / total_words < 0.30`) with graduated penalty.
+  - Reward structured documentation (headings `>= 2` and list items `>= 3`).
+  - Preserve `QualityAnalysis` struct field names (`quality_score`, `readability_score`, `code_snippet_validity`, `is_ai_fluff`, `summary`) and clamping range `0.70..=1.30`.
+  - Maintain exact signature `pub fn analyze_documentation_quality(content: &str) -> QualityAnalysis`.
+* **Acceptance Criteria:** Repetitive text triggers entropy fluff detection with lower multiplier; structured docs earn quality boost; compiles cleanly across all webhook callers.
 
-### Epic 9: Multi-Platform Ingestion Drivers & Framework Plugins (`[integrations]`)
-- [x] **#9.1** `[backend]` `[webhook]` Build GitLab Merge Request webhook ingestion driver (`webhooks_gitlab.rs`)
-- [x] **#9.2** `[backend]` `[webhook]` Build Codeberg / Forgejo pull request webhook ingestion driver (`webhooks_codeberg.rs`)
-- [x] **#9.3** `[widget]` `[plugin]` Package native `@docudrip/docusaurus-plugin` for Docusaurus docs sites
-- [x] **#9.4** `[widget]` `[plugin]` Package native `@docudrip/starlight-astro` integration component for Astro Starlight docs sites
+---
+
+#### #4.2 Implement Locale-Aware Translation Multiplier Engine & Migration
+* **Target Files:**
+  - `backend/src/engine/locale_boost.rs`
+  - `backend/src/engine/mod.rs`
+  - `backend/src/db/streams.rs`
+  - `backend/src/routes/webhooks.rs`
+  - `backend/src/routes/webhooks_gitlab.rs`
+  - `backend/src/routes/webhooks_codeberg.rs`
+  - `backend/migrations/20260814000001_add_locale_boost.sql`
+* **Subsystem:** `backend` / `database` / `webhook`
+* **Description:** Detect document locale from file paths and apply grant boosts (`2.0x` for high-demand languages, `1.5x` for standard languages), persisted in PostgreSQL.
+* **Technical Requirements:**
+  - Create `backend/src/engine/locale_boost.rs` with `detect_locale_multiplier(file_path: &str) -> f64`.
+  - Create SQL migration adding `locale_boost REAL DEFAULT 1.0` to `streams` table.
+  - Update `StreamRow` in `backend/src/db/streams.rs` and `create_stream` query to persist `locale_boost`.
+  - Update GitHub, GitLab, and Codeberg webhook handlers to calculate and pass `final_multiplier = quality_score * locale_boost`.
+* **Acceptance Criteria:** PRs targeting localized docs (e.g. `docs/es/`, `i18n/ja/`) receive configured multiplier boosts.
+
+---
+
+### Sprint 5: Framework Ecosystem Plugins (`[widget]`)
+
+- [ ] **#5.1** `[widget]` `[plugin]` Upgrade `@docudrip/docusaurus-plugin` with Theme Swizzling & Config Validation
+- [ ] **#5.2** `[widget]` `[plugin]` Upgrade `@docudrip/starlight-astro` with TypeScript Exports & Starlight Hook
+- [ ] **#5.3** `[widget]` `[plugin]` Package `@docudrip/gitbook-integration` Embed Script
+- [ ] **#5.4** `[ci]` Update GitHub Actions CI Path Filters for Widget Packages
+
+#### #5.1 Upgrade `@docudrip/docusaurus-plugin` with Theme Swizzling & Config Validation
+* **Target Files:**
+  - `widget/packages/docusaurus/index.js`
+  - `widget/packages/docusaurus/theme/DocuDripFooter.jsx`
+  - `widget/packages/docusaurus/package.json`
+  - `widget/packages/docusaurus/README.md`
+* **Subsystem:** `widget` / `plugin`
+* **Description:** Upgrade Docusaurus plugin to support swizzling via `getThemePath()`, configuration validation, and peer dependency declarations.
+* **Acceptance Criteria:** Docusaurus sites can install and customize the DocuDrip footer component.
+
+---
+
+#### #5.2 Upgrade `@docudrip/starlight-astro` with TypeScript Exports & Starlight Hook
+* **Target Files:**
+  - `widget/packages/starlight/index.ts`
+  - `widget/packages/starlight/package.json`
+  - `widget/packages/starlight/README.md`
+* **Subsystem:** `widget` / `plugin`
+* **Description:** Export standard `StarlightPlugin` hook in TypeScript with Vite define replacement variables.
+* **Acceptance Criteria:** Astro Starlight sites can configure plugin in `astro.config.mjs`.
+
+---
+
+#### #5.3 Package `@docudrip/gitbook-integration` Embed Script
+* **Target Files:**
+  - `widget/packages/gitbook/embed.js`
+  - `widget/packages/gitbook/package.json`
+  - `widget/packages/gitbook/README.md`
+* **Subsystem:** `widget` / `plugin`
+* **Description:** Zero-dependency embed loader script (< 1.5KB) for GitBook portals.
+* **Acceptance Criteria:** Injects `<docudrip-widget>` into GitBook document body seamlessly.
+
+---
+
+#### #5.4 Update GitHub Actions CI Path Filters for Widget Packages
+* **Target File:** `.github/workflows/ci.yml`
+* **Subsystem:** `ci`
+* **Description:** Ensure changes to `widget/**` trigger frontend CI checks.
+* **Acceptance Criteria:** Commits touching widget files run automated lint and checks.
+
+---
+
+### Sprint 6: Flutter Mobile Companion Upgrades (`[mobile]`)
+
+- [ ] **#6.1** `[mobile]` Wire Stream Helpfulness Vote Action Buttons in Mobile Client
+- [ ] **#6.2** `[mobile]` Add Reactive Pending Offline Action Badge on Mobile Streams Tab
+- [ ] **#6.3** `[mobile]` Build Mobile Push Notification Engine for Claim Settlements & Milestones
+
+#### #6.1 Wire Stream Helpfulness Vote Action Buttons in Mobile Client
+* **Target File:** `mobile/lib/main.dart`
+* **Subsystem:** `mobile`
+* **Description:** Add thumbs up / down interactive buttons on stream cards that queue votes via `database.queueOfflineAction('vote', ...)`.
+* **Acceptance Criteria:** Voting triggers local SQLite queue and optimistic background sync.
+
+---
+
+#### #6.2 Add Reactive Pending Offline Action Badge on Mobile Streams Tab
+* **Target File:** `mobile/lib/main.dart`
+* **Subsystem:** `mobile`
+* **Description:** Subscribe to `database.watchPendingActions()` and render dynamic Material 3 `Badge` on navigation bar.
+* **Acceptance Criteria:** Badge accurately indicates count of unsent offline actions.
+
+---
+
+#### #6.3 Build Mobile Push Notification Engine for Claim Settlements & Milestones
+* **Target Files:**
+  - `mobile/lib/services/notification_service.dart`
+  - `mobile/lib/services/sync_service.dart`
+  - `mobile/lib/main.dart`
+  - `mobile/pubspec.yaml`
+* **Subsystem:** `mobile`
+* **Description:** Integrate `flutter_local_notifications` to alert contributors on earning milestones ($10, $50, $100, $500) and settled claims.
+* **Acceptance Criteria:** Local notifications trigger once per milestone with deduplication stored in `shared_preferences`.
+
+---
+
+## 🏛️ Phase 3: Protocol Scaling & Governance (Future)
 
 ### Epic 10: Enterprise & Community Growth (`[enterprise]`)
 - [x] **#10.1** `[backend]` `[settlement]` Build Corporate Match-Funding Pool Engine (`pools.rs`)
 - [x] **#10.2** `[backend]` `[telemetry]` Build Open Documentation Health Telemetry REST API (`GET /api/v1/stats/health-index`)
+
