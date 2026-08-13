@@ -237,25 +237,20 @@ async fn process_merged_pr(
                 continue;
             }
 
-            let locale = if file.filename.contains("/es/") {
-                "es"
-            } else if file.filename.contains("/zh/") {
-                "zh"
-            } else if file.filename.contains("/de/") {
-                "de"
-            } else {
-                "en"
-            };
+            let (locale_boost, locale) = crate::engine::locale_boost::detect_locale_multiplier(&file.filename);
 
             tracing::info!(
-                "Creating stream for PR #{} file: {} ({} meaningful chars)",
+                "Creating stream for PR #{} file: {} ({} meaningful chars, locale: {}, boost: {:.1}x)",
                 pr.number,
                 file.filename,
-                character_count
+                character_count,
+                locale,
+                locale_boost
             );
 
             let patch_text = file.patch.as_deref().unwrap_or("");
             let quality_analysis = crate::engine::quality_scorer::analyze_documentation_quality(patch_text);
+            let final_multiplier = quality_analysis.quality_score * locale_boost;
 
             streams::create_stream(
                 &state.db,
@@ -264,9 +259,10 @@ async fn process_merged_pr(
                 pr.number,
                 &file.filename,
                 character_count,
-                locale,
+                &locale,
                 Some(patch_text),
-                Some(quality_analysis.quality_score),
+                Some(final_multiplier),
+                Some(locale_boost),
             )
             .await?;
         }
