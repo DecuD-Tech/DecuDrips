@@ -134,7 +134,7 @@ jobs:
         working-directory: mobile
         run: flutter analyze
 
-  # Job 6: Widget Web Component CI (Runs ONLY when widget/ changes)
+  # Job 6: Widget Web Component & Framework Plugins CI (Runs ONLY when widget/ changes)
   widget-ci:
     name: Widget & Framework Plugins Check
     needs: changes
@@ -149,8 +149,35 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Verify Widget Files
+      - name: Verify Core Widget Files
         working-directory: widget
         run: |
           test -f src/widget.js
           test -f src/fingerprint.js
+          test -f src/widget.css
+
+      - name: Verify Framework Plugins Structure & Package Configs
+        working-directory: widget
+        run: |
+          echo "Verifying @docudrip/docusaurus-plugin..."
+          test -f packages/docusaurus/package.json
+          test -f packages/docusaurus/index.js
+          test -f packages/docusaurus/theme/DocuDripFooter.jsx
+          test -f packages/docusaurus/README.md
+          node -e "JSON.parse(require('fs').readFileSync('packages/docusaurus/package.json'))"
+
+          echo "Verifying @docudrip/starlight-astro..."
+          test -f packages/starlight/package.json
+          test -f packages/starlight/index.ts
+          test -f packages/starlight/DocuDripWidget.astro
+          test -f packages/starlight/README.md
+          node -e "JSON.parse(require('fs').readFileSync('packages/starlight/package.json'))"
+
+          echo "Verifying @docudrip/gitbook-integration..."
+          test -f packages/gitbook/package.json
+          test -f packages/gitbook/embed.js
+          test -f packages/gitbook/README.md
+          node -e "JSON.parse(require('fs').readFileSync('packages/gitbook/package.json'))"
+
+          echo "All widget packages verified successfully!"
+
