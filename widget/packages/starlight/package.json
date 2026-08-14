@@ -1,9 +1,26 @@
 {
   "name": "@docudrip/starlight-astro",
   "version": "1.0.0",
-  "description": "Official Starlight Astro integration component for DocuDrip continuous micro-funding widget",
-  "main": "index.js",
-  "keywords": ["astro", "starlight", "docudrip", "documentation", "funding"],
+  "description": "Official Starlight Astro integration plugin and component for DocuDrip continuous micro-funding widget",
+  "main": "index.ts",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./DocuDripWidget.astro": "./DocuDripWidget.astro"
+  },
+  "keywords": [
+    "astro",
+    "starlight",
+    "astro-component",
+    "docudrip",
+    "documentation",
+    "funding",
+    "micro-rewards"
+  ],
+  "peerDependencies": {
+    "astro": ">=4.0.0",
+    "@astrojs/starlight": ">=0.20.0"
+  },
   "author": "DecuD-Tech",
   "license": "MIT"
 }
