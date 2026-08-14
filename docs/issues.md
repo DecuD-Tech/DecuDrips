@@ -483,10 +483,10 @@ This document serves as the authoritative local technical specification for ever
 
 ### Sprint 5: Framework Ecosystem Plugins (`[widget]`)
 
-- [ ] **#5.1** `[widget]` `[plugin]` Upgrade `@docudrip/docusaurus-plugin` with Theme Swizzling & Config Validation
-- [ ] **#5.2** `[widget]` `[plugin]` Upgrade `@docudrip/starlight-astro` with TypeScript Exports & Starlight Hook
-- [ ] **#5.3** `[widget]` `[plugin]` Package `@docudrip/gitbook-integration` Embed Script
-- [ ] **#5.4** `[ci]` Update GitHub Actions CI Path Filters for Widget Packages
+- [x] **#5.1** `[widget]` `[plugin]` Upgrade `@docudrip/docusaurus-plugin` with Theme Swizzling & Config Validation
+- [x] **#5.2** `[widget]` `[plugin]` Upgrade `@docudrip/starlight-astro` with TypeScript Exports & Starlight Hook
+- [x] **#5.3** `[widget]` `[plugin]` Package `@docudrip/gitbook-integration` Embed Script
+- [x] **#5.4** `[ci]` Update GitHub Actions CI Path Filters for Widget Packages
 
 #### #5.1 Upgrade `@docudrip/docusaurus-plugin` with Theme Swizzling & Config Validation
 * **Target Files:**
