@@ -1,9 +1,21 @@
 {
   "name": "@docudrip/docusaurus-plugin",
   "version": "1.0.0",
-  "description": "Official Docusaurus plugin for automated DocuDrip continuous micro-funding widget injection",
+  "description": "Official Docusaurus plugin for automated DocuDrip continuous micro-funding widget injection and theme components",
   "main": "index.js",
-  "keywords": ["docusaurus", "docusaurus-plugin", "docudrip", "documentation", "funding"],
+  "keywords": [
+    "docusaurus",
+    "docusaurus-plugin",
+    "docudrip",
+    "documentation",
+    "funding",
+    "micro-rewards"
+  ],
+  "peerDependencies": {
+    "@docusaurus/core": ">=2.0.0",
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  },
   "author": "DecuD-Tech",
   "license": "MIT"
 }
