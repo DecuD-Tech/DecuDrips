@@ -1,0 +1,17 @@
+{
+  "name": "@docudrip/gitbook-integration",
+  "version": "1.0.0",
+  "description": "Official DocuDrip continuous micro-funding embed loader script for GitBook documentation spaces",
+  "main": "embed.js",
+  "keywords": [
+    "gitbook",
+    "gitbook-integration",
+    "embed",
+    "docudrip",
+    "documentation",
+    "funding",
+    "micro-rewards"
+  ],
+  "author": "DecuD-Tech",
+  "license": "MIT"
+}
