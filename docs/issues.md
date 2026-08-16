@@ -532,7 +532,7 @@ This document serves as the authoritative local technical specification for ever
 
 ### Sprint 6: Flutter Mobile Companion Upgrades (`[mobile]`)
 
-- [ ] **#6.1** `[mobile]` Wire Stream Helpfulness Vote Action Buttons in Mobile Client
+- [x] **#6.1** `[mobile]` Wire Stream Helpfulness Vote Action Buttons in Mobile Client
 - [ ] **#6.2** `[mobile]` Add Reactive Pending Offline Action Badge on Mobile Streams Tab
 - [ ] **#6.3** `[mobile]` Build Mobile Push Notification Engine for Claim Settlements & Milestones
 
