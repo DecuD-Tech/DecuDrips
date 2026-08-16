@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'db/database.dart';
 import 'services/sync_service.dart';
@@ -75,7 +76,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     super.initState();
     _screens = [
       PoolsScreen(database: widget.database),
-      StreamsScreen(database: widget.database),
+      StreamsScreen(database: widget.database, syncService: widget.syncService),
       SettingsScreen(syncService: widget.syncService),
     ];
   }
@@ -274,8 +275,13 @@ class PoolsScreen extends StatelessWidget {
 /// Streams Screen: Reactive watcher over watchAllStreams()
 class StreamsScreen extends StatelessWidget {
   final AppDatabase database;
+  final SyncService syncService;
 
-  const StreamsScreen({super.key, required this.database});
+  const StreamsScreen({
+    super.key,
+    required this.database,
+    required this.syncService,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -406,6 +412,71 @@ class StreamsScreen extends StatelessWidget {
                           _buildStatItem('Accumulated', '\$${stream.accumulated.toStringAsFixed(4)}'),
                           _buildStatItem('Flow Rate', '${stream.flowRatePerSecond.toStringAsFixed(4)}/s'),
                           _buildStatItem('Approval Ratio', '${(stream.approvalRatio * 100).toStringAsFixed(0)}%'),
+                        ],
+                      ),
+                      const Divider(height: 24, color: Color(0xFF334155)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Was this helpful?',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.thumb_up_outlined, size: 20),
+                            color: const Color(0xFF10B981),
+                            tooltip: 'Helpful',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () async {
+                              await database.queueOfflineAction(
+                                'vote',
+                                jsonEncode({
+                                  'stream_id': stream.id,
+                                  'is_upvote': true,
+                                }),
+                              );
+                              syncService.processOfflineQueue();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Helpful feedback logged!'),
+                                    backgroundColor: Color(0xFF10B981),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.thumb_down_outlined, size: 20),
+                            color: const Color(0xFFFF007F),
+                            tooltip: 'Unhelpful',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () async {
+                              await database.queueOfflineAction(
+                                'vote',
+                                jsonEncode({
+                                  'stream_id': stream.id,
+                                  'is_upvote': false,
+                                }),
+                              );
+                              syncService.processOfflineQueue();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Unhelpful feedback logged!'),
+                                    backgroundColor: Color(0xFFFF007F),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
                         ],
                       ),
                     ],
