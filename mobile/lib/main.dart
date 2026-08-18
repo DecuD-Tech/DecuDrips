@@ -88,32 +88,53 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         index: _selectedIndex,
         children: _screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+      bottomNavigationBar: StreamBuilder<List<OfflineActionsTableData>>(
+        stream: widget.database.watchPendingActions(),
+        builder: (context, snapshot) {
+          final pendingCount = snapshot.data?.length ?? 0;
+
+          return NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
+            backgroundColor: const Color(0xFF0F172A),
+            indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.account_balance_wallet_outlined),
+                selectedIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF818CF8)),
+                label: 'Pools',
+              ),
+              NavigationDestination(
+                icon: pendingCount > 0
+                    ? Badge.count(
+                        count: pendingCount,
+                        backgroundColor: const Color(0xFF6366F1),
+                        textColor: Colors.white,
+                        child: const Icon(Icons.waves_outlined),
+                      )
+                    : const Icon(Icons.waves_outlined),
+                selectedIcon: pendingCount > 0
+                    ? Badge.count(
+                        count: pendingCount,
+                        backgroundColor: const Color(0xFF6366F1),
+                        textColor: Colors.white,
+                        child: const Icon(Icons.waves, color: Color(0xFF818CF8)),
+                      )
+                    : const Icon(Icons.waves, color: Color(0xFF818CF8)),
+                label: 'Streams',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings, color: Color(0xFF818CF8)),
+                label: 'Settings',
+              ),
+            ],
+          );
         },
-        backgroundColor: const Color(0xFF0F172A),
-        indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF818CF8)),
-            label: 'Pools',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.waves_outlined),
-            selectedIcon: Icon(Icons.waves, color: Color(0xFF818CF8)),
-            label: 'Streams',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings, color: Color(0xFF818CF8)),
-            label: 'Settings',
-          ),
-        ],
       ),
     );
   }
