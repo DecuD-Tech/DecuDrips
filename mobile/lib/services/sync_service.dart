@@ -2,13 +2,19 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 import '../db/database.dart';
+import 'notification_service.dart';
 
-/// SyncService coordinates background polling and offline queue execution (#7.4, #7.5)
+/// SyncService coordinates background polling and offline queue execution (#7.4, #7.5, #6.3)
 class SyncService {
   final AppDatabase db;
   final String apiBaseUrl;
+  final NotificationService notificationService;
 
-  SyncService({required this.db, required this.apiBaseUrl});
+  SyncService({
+    required this.db,
+    required this.apiBaseUrl,
+    NotificationService? notificationService,
+  }) : notificationService = notificationService ?? NotificationService();
 
   /// Triggers full sync: fetches server data and processes queued offline actions
   Future<void> syncAll() async {
@@ -23,7 +29,7 @@ class SyncService {
     return double.tryParse(val.toString()) ?? fallback;
   }
 
-  /// Periodically fetch pools, streams, and claims from Axum API (#7.4)
+  /// Periodically fetch pools, streams, and claims from Axum API (#7.4, #6.3)
   Future<void> syncAllFromServer() async {
     try {
       final poolsResp = await http.get(Uri.parse('$apiBaseUrl/pools'));
@@ -57,6 +63,28 @@ class SyncService {
           createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
         )).toList();
         await db.syncStreams(streams);
+        await notificationService.checkMilestones(streams);
+      }
+
+      final claimsResp = await http.get(Uri.parse('$apiBaseUrl/claims'));
+      if (claimsResp.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(claimsResp.body);
+        final claims = list.map((json) => ClaimsTableData(
+          id: json['id'],
+          streamId: json['stream_id'],
+          userId: json['user_id'] ?? 'contributor',
+          amount: _parseDouble(json['amount']),
+          status: json['status'] ?? 'pending',
+          providerTxRef: json['provider_tx_ref'],
+          claimedAt: DateTime.tryParse(json['claimed_at'] ?? '') ?? DateTime.now(),
+        )).toList();
+        await db.syncClaims(claims);
+
+        for (final claim in claims) {
+          if (claim.status == 'settled' || claim.status == 'failed') {
+            await notificationService.notifyClaimStatus(claim);
+          }
+        }
       }
     } catch (e) {
       // Offline mode — silently fallback to local Drift SQLite cache
