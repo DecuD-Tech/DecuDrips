@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'db/database.dart';
+import 'services/notification_service.dart';
 import 'services/sync_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().initialize();
   final database = AppDatabase();
   final syncService = SyncService(
     db: database,
