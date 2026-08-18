@@ -534,7 +534,7 @@ This document serves as the authoritative local technical specification for ever
 
 - [x] **#6.1** `[mobile]` Wire Stream Helpfulness Vote Action Buttons in Mobile Client
 - [x] **#6.2** `[mobile]` Add Reactive Pending Offline Action Badge on Mobile Streams Tab
-- [ ] **#6.3** `[mobile]` Build Mobile Push Notification Engine for Claim Settlements & Milestones
+- [x] **#6.3** `[mobile]` Build Mobile Push Notification Engine for Claim Settlements & Milestones
 
 #### #6.1 Wire Stream Helpfulness Vote Action Buttons in Mobile Client
 * **Target File:** `mobile/lib/main.dart`
